@@ -8,7 +8,6 @@ class User(BaseModel):
     password_hash: str
     email_verified: bool = False
     created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
 
 class Question(BaseModel):
     question_text: str
