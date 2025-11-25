@@ -7,13 +7,12 @@ function App() {
   return (
       <AuthProvider>
         <Routes>
-          <Route path="/" 
-            element={
-              <ProtectedRoute>
-                <div>Home Page (logged in)</div>
-              </ProtectedRoute>
-            } 
-          />
+          <Route path="/" element={
+                            <ProtectedRoute>
+                              <div>Home Page (logged in)</div>
+                            </ProtectedRoute>
+                          }/>
+
           <Route path="/auth" element={<AuthPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

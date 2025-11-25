@@ -11,7 +11,6 @@ function ProtectedRoute({ children }) {
             </div>
         )
     }
-    
     if (!user) {
         return <Navigate to="/auth" replace />
     }

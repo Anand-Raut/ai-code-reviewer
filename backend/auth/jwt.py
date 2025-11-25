@@ -14,6 +14,7 @@ def create_access_token(user_id: str) -> str:
 
 def verify_token(token: str) -> dict | None:
     try:
+        print(jwt.decode(token, SECRET, algorithms=[ALGORITHM]))
         return jwt.decode(token, SECRET, algorithms=[ALGORITHM])
     except:
         return None

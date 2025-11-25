@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -6,13 +6,21 @@ import { Input } from "@/components/ui/input"
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Code2, Loader2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 function AuthPage() {
-    const { login, signup } = useAuth()
+    const navigate = useNavigate()
+    const { login, signup, user } = useAuth()
     const [loginData, setLoginData] = useState({email: "", password: ""})
     const [signupData, setSignupData] = useState({name: "", email: "", password: ""})
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState("")
+
+    useEffect(() => {
+        if (user) {
+            navigate('/')
+        }
+    }, [user, navigate])
 
     const handleLogin = async (e) => {
         e.preventDefault()
@@ -42,7 +50,7 @@ function AuthPage() {
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-neutral-950">
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:14px_24px]"></div>
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-size-[14px_24px]"></div>
             
             <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-neutral-800 rounded-full mix-blend-normal filter blur-3xl opacity-20"></div>
 
