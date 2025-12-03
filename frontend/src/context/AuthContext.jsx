@@ -9,6 +9,7 @@ export function AuthProvider({ children }){
     const navigate = useNavigate()
 
     useEffect(() => {
+        
         const token = localStorage.getItem('token')
         if (token) {
             fetch('http://localhost:8000/auth/me', {
@@ -31,7 +32,7 @@ export function AuthProvider({ children }){
             })
             .then(userData => {
                 if (userData) {
-                    setUser({ token, ...userData })
+                    setUser(userData)
                 }
             })
            .catch((error) => {
@@ -48,6 +49,7 @@ export function AuthProvider({ children }){
             })
             .finally(() => {
                 setLoading(false)
+                
             })
         } else {
             setLoading(false)

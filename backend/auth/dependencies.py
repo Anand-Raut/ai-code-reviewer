@@ -4,7 +4,7 @@ from .jwt import verify_token
 
 security = HTTPBearer()
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
     token = credentials.credentials
     payload = verify_token(token)
     
@@ -14,4 +14,4 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             detail="Invalid or expired token"
         )
 
-    return payload["sub"]
+    return {"user": payload["sub"], "token": token}
