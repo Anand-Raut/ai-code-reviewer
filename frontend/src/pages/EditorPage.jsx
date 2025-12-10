@@ -3,11 +3,12 @@ import { useAuth } from '@/context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import TextEditor from '@/components/TextEditor'
 import Sidebar from '@/components/Sidebar'
-
+import TopBar from '@/components/TopBar'
+import { Button } from '@/components/ui/button'
 export default function EditorPage() {
     const { user, logout } = useAuth()
     const navigate = useNavigate()
-    
+    const [stats, setStats] = useState({})
     const [code, setCode] = useState('')
     const [language, setLanguage] = useState('python')
     const [question, setQuestion] = useState('')
@@ -15,10 +16,16 @@ export default function EditorPage() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
     const [sidebarOpen, setSidebarOpen] = useState(false)
+    const [parameters, setParameter] = useState('Space & Time Complexity')
 
     const handleReview = async () => {
+        console.log({code, language, question, stats, parameters})
         if (!code.trim()) {
             setError('Please enter some code to review')
+            return
+        }
+        if (!question.trim()) {
+            setError('Please enter a question')
             return
         }
         
@@ -26,28 +33,29 @@ export default function EditorPage() {
         setError(null)
         
         try {
-            const token = localStorage.getItem('token')
-            const response = await fetch('http://localhost:8000/api/review', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ 
-                    code, 
-                    language,
-                    question  // ✅ Send question to backend
+                const token = localStorage.getItem('token')
+                const response = await fetch('http://localhost:8000/api/review', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ 
+                        code, 
+                        language,
+                        question,
+                        stats,
+                    })
                 })
-            })
-            
-            if (response.ok) {
-                const data = await response.json()
-                setReview(data)
-            } else if (response.status === 401) {
-                setError('Session expired. Please login again.')
-                setTimeout(() => logout(), 2000)
-            } else {
-                setError('Failed to review code. Please try again.')
+                
+                if (response.ok) {
+                    const data = await response.json()
+                    setReview(data)
+                } else if (response.status === 401) {
+                    setError('Session expired. Please login again.')
+                    setTimeout(() => logout(), 2000)
+                } else {
+                    setError('Failed to review code. Please try again.')
             }
         } catch (err) {
             setError('Network error. Please check your connection.')
@@ -76,21 +84,6 @@ export default function EditorPage() {
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col h-screen overflow-hidden">
-                {/* Top Header Bar */}
-                <header className="bg-[#161b22] border-b border-[#30363d] px-6 py-3 sticky top-0 z-30">
-                    <div className="flex items-center justify-between">
-                        <button 
-                            onClick={() => setSidebarOpen(!sidebarOpen)}
-                            className="lg:hidden p-2 hover:bg-[#21262d] rounded-md transition"
-                        >
-                            <svg className="w-5 h-5 text-[#8b949e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                            </svg>
-                        </button>
-                        <h1 className="text-[#c9d1d9] text-lg font-semibold">AI powered Code Review</h1>
-                        <div className="w-9"></div>
-                    </div>
-                </header>
 
             <main className="flex-1 flex overflow-hidden gap-4 p-4">
                 {/* Left: Code Editor */}
@@ -113,19 +106,34 @@ export default function EditorPage() {
                         </div>
                     )}
 
-                    <div className="flex-1">
-                        <TextEditor
-                            code={code}
-                            language={language}
-                            question={question}
-                            loading={loading}
-                            onCodeChange={setCode}
-                            onLanguageChange={setLanguage}
-                            onQuestionChange={setQuestion}
-                                onReview={handleReview}
-                            onClear={handleClear}
-                        />
+                    <TopBar
+                        language={language}
+                        question={question}
+                        onLanguageChange={setLanguage}
+                        onQuestionChange={setQuestion}
+                        parameters={parameters}
+                        onParametersChange={setParameter}
+                    />
+
+                <div className="flex-1 flex flex-col pb-4 overflow-hidden">
+                    <TextEditor
+                        code={code}
+                        stats={stats}
+                        onCodeChange={setCode}
+                        onStatsChange={setStats}
+                    />
+                    
                     </div>
+                    <div className="px-4 py-2 flex justify-end bg-[#161b22] border-t border-[#30363d]">
+                        <Button 
+                            onClick={handleReview}
+                            disabled={loading}
+                            className="bg-[#238636] hover:bg-[#2ea043] text-white"
+                        >
+                            {loading ? 'Reviewing...' : 'Submit'}
+                        </Button>
+                    </div>
+                                        
                 </div>
 
                 {/* Right: AI Review Panel */}
@@ -170,6 +178,7 @@ export default function EditorPage() {
                         </div>
                     </div>
                 </div>
+
             </main>
             </div>
         </div>

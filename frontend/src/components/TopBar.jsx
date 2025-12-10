@@ -9,11 +9,17 @@ const LANGUAGES = [
     { value: 'go', label: 'Go' },
 ]
 
-export default function TopBar({ question, onQuestionChange, language, onLanguageChange }) {
+const PARAMETERS = [
+    'Space & Time Complexity',
+    'Space Complexity',
+    'Time Complexity'
+]
+
+export default function TopBar({ question, onQuestionChange, language, onLanguageChange, onParametersChange, parameters }) {
     return (
-        <div className="bg-[#161b22] border-b border-[#30363d]">
+        <div className="">
             {/* Question Input */}
-            <div className="px-4 py-3">
+            <div className="py-2">
                 <input
                     type="text"
                     placeholder="Enter your question"
@@ -24,17 +30,25 @@ export default function TopBar({ question, onQuestionChange, language, onLanguag
             </div>
 
             {/* Language Selector Bar */}
-            <div className="px-4 py-2.5 flex items-center justify-between border-t border-[#30363d]">
+            <div className="p-2 flex items-center justify-between border-t border-[#30363d] bg-[#161b22] rounded-t-md">
                 <select
                     value={language}
                     onChange={(e) => onLanguageChange(e.target.value)}
-                    className="bg-[#21262d] border border-[#30363d] text-[#c9d1d9] text-sm rounded-md px-3 py-1.5 hover:bg-[#30363d] focus:outline-none focus:ring-1 focus:ring-[#58a6ff] cursor-pointer transition"
+                    className="bg-[#0d1117] border border-[#30363d] text-[#c9d1d9] text-sm rounded-md px-3 py-1.5 hover:bg-[#21262d] focus:outline-none focus:ring-1 focus:ring-[#58a6ff] cursor-pointer transition"
                 >
                     {LANGUAGES.map((lang) => (
                         <option key={lang.value} value={lang.value}>{lang.label}</option>
                     ))}
                 </select>
-                <span className="text-xs text-[#8b949e]">Space & Time Complexity</span>
+                <select
+                    value={parameters}
+                    onChange={(e) => onParametersChange(e.target.value)}
+                    className="bg-[#0d1117] border border-[#30363d] text-[#c9d1d9] text-sm rounded-md px-3 py-1.5 hover:bg-[#21262d] focus:outline-none focus:ring-1 focus:ring-[#58a6ff] cursor-pointer transition"
+                >
+                    {PARAMETERS.map((value) => (
+                        <option key={value} value={value}>{value}</option>
+                    ))}
+                </select>
             </div>
         </div>
     )

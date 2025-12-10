@@ -1,9 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Editor } from '@monaco-editor/react'
 
-const TextEditor = () => {
-  const [code, setCode] = useState("")
-  const [stats, setStats] = useState({})
+const TextEditor = ({ stats, onStatsChange, code, onCodeChange}) => {
 
   const prevCodeRef = useRef("")
   const lastEditTimeRef = useRef(null)
@@ -126,9 +124,9 @@ const TextEditor = () => {
       }
     });
 
-    setStats(newStats)
+    onStatsChange(newStats)
     prevCodeRef.current = value
-    setCode(value)
+    onCodeChange(value)
     lastEditTimeRef.current = now
   }
 
