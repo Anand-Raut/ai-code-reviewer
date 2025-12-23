@@ -9,14 +9,23 @@ class User(BaseModel):
     email_verified: bool = False
     created_at: Optional[datetime] = None
 
+
 class Question(BaseModel):
     question_text: str
     created_at: Optional[datetime] = None
 
+
 class Attempt(BaseModel):
     user_id: str
     question_id: str
+
+    code: str
+    logs: dict
+
+    selected_approach: Optional[str] = None
+
     created_at: Optional[datetime] = None
+
 
 class Drawback(BaseModel):
     attempt_id: str

@@ -12,6 +12,6 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         raise HTTPException(
             status_code=401, 
             detail="Invalid or expired token"
-        )
+        )   
 
     return {"user": payload["sub"], "token": token}
