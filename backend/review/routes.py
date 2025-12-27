@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union
 from auth.dependencies import get_current_user
 from database.database import db
-from database.models import Attempt, Question, Drawback, User
 from datetime import datetime, timezone
+from ai.service import get_approaches, get_feedback
+import json
+
 
 router = APIRouter(prefix='/api', tags=["review"])
 
@@ -20,7 +22,6 @@ class ApproachSelect(BaseModel):
     language: str
     parameters: str
     
-
 class ApproachRequest(BaseModel):
     code: str
     language: str
@@ -38,28 +39,15 @@ class Feedback (BaseModel):
     drawbacks: List[drawback]
 
 
-@router.post("/getapproaches", response_model=ApproachesResponse )
-async def get_code_approaches (request: ApproachRequest, current_user: dict = Depends(get_current_user)):
+@router.post("/getapproaches", response_model=Union[ApproachesResponse, None])
+def select_approach (request: ApproachRequest, current_user: dict = Depends(get_current_user)):
+    
     try:
-        # TODO: Call AI service here
-        # mock response
-        approaches = [
-            Approach(
-                title="Brute Force Approach",
-                description=f"Simple solution for {request.question}. Time complexity O(n^2)"
-            ),
-            Approach(
-                title="Optimized Approach",
-                description="Using hash map to improve performance. Time complexity O(n)"
-            ),
-            Approach(
-                title="Advanced Approach",
-                description="Using dynamic programming for optimal solution"
-            )
-        ]
-
+        raw = get_approaches(request.question, request.code)
+        data = json.loads(raw)
+        print(data)
         return ApproachesResponse (
-            approaches=approaches,
+            approaches=data["approaches"]
         )
     except Exception as e:
         print(e)

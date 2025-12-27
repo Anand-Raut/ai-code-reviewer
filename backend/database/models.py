@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 class User(BaseModel):
@@ -27,8 +27,14 @@ class Attempt(BaseModel):
     created_at: Optional[datetime] = None
 
 
-class Drawback(BaseModel):
+# class Drawback(BaseModel): #for marking if drawbacks are resolved or not
+#     attempt_id: str
+#     user_id: str
+#     resolved: bool
+
+
+class Feedback(BaseModel):
     attempt_id: str
     question_id: str
-    drawback_text: str
+    # drawbacks: List[Drawback]
     created_at: Optional[datetime] = None
