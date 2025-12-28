@@ -1,5 +1,7 @@
 from openai import OpenAI
 from dotenv import load_dotenv
+import json
+
 load_dotenv()
 client = OpenAI()
 
@@ -29,12 +31,7 @@ You are a programming mentor analyzing a student's coding session.
 OUTPUT FORMAT (strict JSON):
 {
   "feedback_text": string,
-  "drawbacks": [
-    {
-      "drawback_text": string,
-      "evidence": string
-    }
-  ]
+  "drawbacks": [string, string, ...]
 }
 
 INPUTS:
@@ -78,8 +75,8 @@ def get_approaches(question, code):
 	# )
 	
 	# print(response1.output_text)
-	# return response1.output_text
-	return """{
+	# return json.loads(response1.output_text)
+	return json.loads("""{
 	"approaches": [
 		{
 		"title": "Hash-map complement lookup",
@@ -87,8 +84,8 @@ def get_approaches(question, code):
 		}
 	]
 	}"""
-
-def get_feedback(question, approach, code, stats):
+)
+def get_feedback(question, approach, code, stats, paramaters):
 	# response2 = client.responses.create(
 	# 	model="gpt-5-nano",
 	# 	reasoning={"effort": "low"},
@@ -107,24 +104,14 @@ def get_feedback(question, approach, code, stats):
 	# 		""",
 	# 	store=False,
 	# )
-	# return response2.output_text
-	return """{
-		"feedback_text": "Your solution demonstrates understanding of the problem, but there are several areas for improvement. Consider optimizing the nested loops and adding input validation.",
+	# return json.loads(response2.output_text)
+	return json.loads("""{
+		"feedback_text": "Your solution demonstrates understanding...",
 		"drawbacks": [
-			{
-				"drawback_text": "Inefficient nested loop structure increases time complexity to O(n²)"
-			},
-			{
-				"drawback_text": "No input validation - code will crash with empty arrays"
-			},
-			{
-				"drawback_text": "Variable names like 'temp' and 'x' are not descriptive"
-			},
-			{
-				"drawback_text": "Missing edge case handling for negative numbers"
-			},
-			{
-				"drawback_text": "Code lacks comments explaining the algorithm logic"
-			}
+			"Inefficient nested loop structure increases time complexity to O(n²)",
+			"No input validation - code will crash with empty arrays",
+			"Variable names like 'temp' and 'x' are not descriptive",
+			"Missing edge case handling for negative numbers",
+			"Code lacks comments explaining the algorithm logic"
 		]
-	}"""
+	}""")

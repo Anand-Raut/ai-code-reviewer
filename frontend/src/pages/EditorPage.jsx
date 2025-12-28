@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import TextEditor from '@/components/TextEditor'
 import Sidebar from '@/components/Sidebar'
 import TopBar from '@/components/TopBar'
 import AiReviewPanel from '@/components/AiReviewPanel'
 import { Button } from '@/components/ui/button'
+import Error from '@/components/ui/Error'
+import AttemptPanel from '@/components/AttemptPanel'
 
 export default function EditorPage() {
 	const { user, logout } = useAuth()
@@ -18,6 +20,9 @@ export default function EditorPage() {
 	const [sidebarOpen, setSidebarOpen] = useState(false)
 	const [parameters, setParameter] = useState('Space & Time Complexity')
 	const [approaches, setApproaches] = useState(null)
+	const [questions, setQuestions] = useState([])
+	const [attempts, setAttempts] = useState([])
+	const [reviewSection, setReviewSection] = useState(true)
 
 	const handleClear = () => {
 		setCode('')
@@ -25,6 +30,69 @@ export default function EditorPage() {
 		setFeedback(null)
 		setError(null)
 		setApproaches(null)
+	}
+	useEffect(() => {
+		const fetchQuestions = async () => {
+			try {
+				const token = localStorage.getItem('token')
+				const response = await fetch('http://localhost:8000/api/questions', {
+					method: "GET",
+					headers: {
+						'Content-Type': 'application/json',
+						'Authorization': `Bearer ${token}`
+					}
+				})
+				if (response.ok) {
+					const data = await response.json()
+					console.log(data.questions)
+					setQuestions(data.questions)
+				} else if (response.status === 401) {
+					setError('Session expired. Please login again.')
+					setTimeout(() => logout(), 2000)
+				} else {
+					setError('Failed to fetch questions.')
+				}
+			} catch (err) {
+				setError('Network error. Please check your connection.')
+				console.error('Fetch error:', err)
+			}
+		}
+		fetchQuestions()
+	}, [])
+
+	const changeQuestion = async (questionId) => {
+		const q = questions.find(q => q.id === questionId)
+		if (!q) return
+		setLoading(true)
+		const token = localStorage.getItem('token')
+
+		try {
+			const response = await fetch(`http://localhost:8000/api/attempts/${questionId}`, {
+				method: "GET",
+				headers: {
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${token}`
+				}
+			})
+			if (response.ok) {
+				const data = await response.json()
+				console.log(data.attempts)
+				setAttempts(data.attempts)
+				setCode(data.attempts[0].code)
+				setQuestion(q.question_text)
+			} else if (response.status === 401) {
+				setError('Session expired. Please login again.')
+				setTimeout(() => logout(), 2000)
+			} else {
+				setError('Failed to fetch questions.')
+			}
+		} catch (error) {
+			setError('Network error. Please check your connection.')
+			console.error('Fetch error:', error)
+		} finally {
+			setLoading(false)
+		}
+		// console.log(attempts)
 	}
 
 	const handleSubmit = async () => {
@@ -132,7 +200,14 @@ export default function EditorPage() {
 		<div className="min-h-screen bg-neutral-950 flex relative">
 
 			{/* Sidebar */}
-			<Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+			<Sidebar
+				questions={questions}
+				isOpen={sidebarOpen}
+				onToggle={() => setSidebarOpen(!sidebarOpen)}
+				changeQuestion={changeQuestion}
+				setCode={setCode}
+				setQuestion={setQuestion}
+			/>
 
 			{/* Main Content */}
 			<div className="flex-1 flex flex-col h-screen overflow-hidden relative z-10">
@@ -142,21 +217,7 @@ export default function EditorPage() {
 					{/* Left: Code Editor */}
 					<div className="w-2/3 flex-1 flex flex-col">
 						{error && (
-							<div className="mb-4 p-3 bg-red-950 border border-red-900 rounded-lg">
-								<div className="flex items-center justify-between">
-									<div className="flex items-center space-x-2">
-										<svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-										</svg>
-										<p className="text-red-400 text-sm">{error}</p>
-									</div>
-									<button onClick={() => setError(null)} className="text-red-400 hover:text-red-300">
-										<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-										</svg>
-									</button>
-								</div>
-							</div>
+							<Error error={error} onClose={() => setError(null)} />
 						)}
 
 						<TopBar
@@ -205,12 +266,54 @@ export default function EditorPage() {
 					</div>
 
 					{/* Right: AI Review Panel */}
-					<AiReviewPanel
-						approaches={approaches}
-						loading={loading}
-						onApproachSelect={handleApproachSelect}
-						feedback={feedback}
-					/>
+					<div className="w-1/3 flex flex-col">
+						<div className="flex-1 rounded-md bg-neutral-900 border-l border-neutral-800 overflow-hidden flex flex-col">
+							<div className="p-4 border-b border-neutral-800">
+								<div className="flex items-center justify-between mb-2">
+									<h2 className="text-lg font-semibold text-neutral-100 flex items-center gap-2">
+										<svg className="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+										</svg>
+										AI Code Review
+									</h2>
+								</div>
+								{/* Tab Buttons */}
+								<div className="flex gap-2">
+									<button
+										onClick={() => setReviewSection(true)}
+										className={`flex-1 px-3 py-2 text-sm rounded-md transition ${reviewSection
+											? 'bg-neutral-800 text-neutral-100 border border-neutral-700'
+											: 'text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800/50'
+											}`}
+									>
+										AI Review
+									</button>
+									<button
+										onClick={() => setReviewSection(false)}
+										className={`flex-1 px-3 py-2 text-sm rounded-md transition ${!reviewSection
+											? 'bg-neutral-800 text-neutral-100 border border-neutral-700'
+											: 'text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800/50'
+											}`}
+									>
+										Previous Attempts
+									</button>
+								</div>
+							</div>
+
+							{/* Content Area */}
+							{reviewSection ? (
+								<AiReviewPanel
+									approaches={approaches}
+									loading={loading}
+									onApproachSelect={handleApproachSelect}
+									feedback={feedback}
+								/>
+							) : (
+								<AttemptPanel attempts={attempts} />
+							)}
+						</div>
+					</div>
+
 				</main>
 			</div>
 			<div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-size-[14px_24px] z-0"></div>

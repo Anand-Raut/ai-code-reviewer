@@ -5,7 +5,7 @@ from auth.dependencies import get_current_user
 from database.database import db
 from datetime import datetime, timezone
 from ai.service import get_approaches, get_feedback
-import json
+from bson import ObjectId
 
 
 router = APIRouter(prefix='/api', tags=["review"])
@@ -31,21 +31,19 @@ class ApproachRequest(BaseModel):
 class ApproachesResponse (BaseModel):
     approaches: List[Approach]
 
-class drawback (BaseModel):
+class Drawback (BaseModel):
     drawback_text: str
 
 class Feedback (BaseModel):
     feedback_text: str
-    drawbacks: List[drawback]
+    drawbacks: List[Drawback]
 
 
 @router.post("/getapproaches", response_model=Union[ApproachesResponse, None])
-def select_approach (request: ApproachRequest, current_user: dict = Depends(get_current_user)):
+def get_appraoches (request: ApproachRequest, current_user: dict = Depends(get_current_user)):
     
     try:
-        raw = get_approaches(request.question, request.code)
-        data = json.loads(raw)
-        print(data)
+        data = get_approaches(request.question, request.code)
         return ApproachesResponse (
             approaches=data["approaches"]
         )
@@ -61,46 +59,120 @@ async def select_approach(request: ApproachSelect, current_user: dict = Depends(
         "question_text": request.question
     }
     result1 = db.Questions.insert_one(question)
+    question_id = result1.inserted_id
 
-    if not result1.acknowledged:
-        print("Failed to store the question in the database")
-    else:
-        question_id = result1.inserted_id
+
+    try:
+        drawback_ids = []
+        data = get_feedback(request.question, request.approach, request.code, request.stats, request.parameters)
+        print(data)
+        feedback_doc = {
+            "feedback_text": data["feedback_text"],
+            "created_at": datetime.now(timezone.utc)
+        }
+        result3 = db.Feedbacks.insert_one(feedback_doc)
+        feedback_id = result3.inserted_id
+        drawback_docs = [
+            {
+                "drawback_text": drawback["drawback_text"],
+                "created_at": datetime.now(timezone.utc)
+            }
+            for drawback in data["drawbacks"]
+        ]
+        result4 = db.Drawbacks.insert_many(drawback_docs)
+        drawback_ids.extend(result4.inserted_ids)
 
         attempt = {
-            "user_id" :  current_user["user"],
-            "question_id": question_id,
-            "code" :  request.code,
-            "stats":  request.stats,
-            "selected_approach": request.approach.model_dump(),
-            "created_at": datetime.now(timezone.utc)
+        "user_id" :  current_user["user"],
+        "question_id": question_id,
+        "code" :  request.code,
+        "stats":  request.stats,
+        "selected_approach": request.approach.model_dump(),
+        "feedback_id": feedback_id,
+        "drawback_ids": drawback_ids,
+        "created_at": datetime.now(timezone.utc)
         }
 
         result2 = db.Attempts.insert_one(attempt)
         if not result2.acknowledged:
-            print("Failed to store the question in the database")
+            print("Failed to store the attempt in the database")
+
+        return Feedback (
+            feedback_text=data["feedback_text"],
+            drawbacks=data["drawbacks"]
+        )
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail=str(e))   
 
 
-    # Get drawbacks etc for the code and the approach.
-    # class Drawback(BaseModel):
-    #     attempt_id: str
-    #     question_id: str
-    #     drawback_text: str
-    #     created_at: Optional[datetime] = None
+@router.get("/questions")
+async def get_user_questions(current_user: dict = Depends(get_current_user)):
+    #get question ids from attempt and then get the question texts too
+    user_id = current_user["user"]
 
-    # AI should return drawback list, and a feedback text
-    # TODO: Replace with actual AI-generated feedback
-    sample_drawbacks = [
-        drawback(drawback_text="Inefficient nested loop structure increases time complexity to O(n²)"),
-        drawback(drawback_text="No input validation - code will crash with empty arrays"),
-        drawback(drawback_text="Variable names like 'temp' and 'x' are not descriptive"),
-        drawback(drawback_text="Missing edge case handling for negative numbers"),
-        drawback(drawback_text="Code lacks comments explaining the algorithm logic")
+    pipeline = [
+        { "$match": { "user_id": user_id } },
+
+        {
+            "$lookup": {
+                "from": "Questions",
+                "localField": "question_id",
+                "foreignField": "_id",
+                "as": "question"
+            }
+        },
+
+        { "$unwind": "$question" },
+
+        {
+            "$group": {
+                "_id": "$question._id",
+                "question_text": { "$first": "$question.question_text" },
+                "last_attempt": { "$max": "$created_at" }
+
+            }
+        },
+        { "$sort": { "last_attempt": -1 } }
+
     ]
-    
-    feedback_response = Feedback(
-        feedback_text="Your solution demonstrates understanding of the problem, but there are several areas for improvement. Consider optimizing the nested loops and adding input validation.",
-        drawbacks=sample_drawbacks
+
+    result = list(db.Attempts.aggregate(pipeline))
+
+    return {
+        "questions": [
+            {
+                "id": str(r["_id"]),
+                "question_text": r["question_text"]
+            }
+            for r in result
+        ]
+    }
+
+
+@router.get("/attempts/{question_id}")
+async def get_question_attempts(question_id: str, current_user: dict = Depends(get_current_user)):
+    user_id = current_user["user"]
+    attempts = list(
+        db.Attempts
+          .find(
+              {
+                  "question_id": ObjectId(question_id),
+                  "user_id": user_id
+              }
+          )
+          .sort("created_at", -1)
     )
 
-    return feedback_response
+    return {
+        "attempts": [
+            {
+                "id": str(a["_id"]),
+                "code": a["code"],
+                "stats": a["stats"],
+                "selected_approach": a.get("selected_approach"),
+                "created_at": a["created_at"]
+            }
+            for a in attempts
+        ]
+    }
