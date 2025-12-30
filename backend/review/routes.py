@@ -55,6 +55,7 @@ def get_appraoches (request: ApproachRequest, current_user: dict = Depends(get_c
 @router.post("/approachselect", response_model=Feedback)
 async def select_approach(request: ApproachSelect, current_user: dict = Depends(get_current_user)):
     #Store data in the DB
+    # NEED TO MAKE SURE THERE ARE NO DUPLICATE QUESTIONS, CODE (in attempts), DRAWBACKS, FEEDBACKS.
     question = {
         "question_text": request.question
     }
@@ -72,13 +73,17 @@ async def select_approach(request: ApproachSelect, current_user: dict = Depends(
         }
         result3 = db.Feedbacks.insert_one(feedback_doc)
         feedback_id = result3.inserted_id
+        print("yeyyeye")
         drawback_docs = [
             {
-                "drawback_text": drawback["drawback_text"],
+                "drawback_text": drawback,
                 "created_at": datetime.now(timezone.utc)
             }
             for drawback in data["drawbacks"]
         ]
+        print("drawback_docs: ", drawback_docs)
+        
+
         result4 = db.Drawbacks.insert_many(drawback_docs)
         drawback_ids.extend(result4.inserted_ids)
 
@@ -99,7 +104,7 @@ async def select_approach(request: ApproachSelect, current_user: dict = Depends(
 
         return Feedback (
             feedback_text=data["feedback_text"],
-            drawbacks=data["drawbacks"]
+            drawbacks=[Drawback(drawback_text=d) for d in data["drawbacks"]]
         )
     except Exception as e:
         print(e)

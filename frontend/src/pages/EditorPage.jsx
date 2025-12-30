@@ -23,7 +23,8 @@ export default function EditorPage() {
 	const [questions, setQuestions] = useState([])
 	const [attempts, setAttempts] = useState([])
 	const [reviewSection, setReviewSection] = useState(true)
-
+	const [renderCodeEditor, reRenderCodeEditor] = useState(true)
+ 
 	const handleClear = () => {
 		setCode('')
 		setQuestion('')
@@ -31,6 +32,11 @@ export default function EditorPage() {
 		setError(null)
 		setApproaches(null)
 	}
+	const reRenderEditor = () => {
+		reRenderCodeEditor(!renderCodeEditor)
+	}
+
+
 	useEffect(() => {
 		const fetchQuestions = async () => {
 			try {
@@ -59,6 +65,7 @@ export default function EditorPage() {
 		}
 		fetchQuestions()
 	}, [])
+
 
 	const changeQuestion = async (questionId) => {
 		const q = questions.find(q => q.id === questionId)
@@ -94,6 +101,20 @@ export default function EditorPage() {
 		}
 		// console.log(attempts)
 	}
+
+
+	const changeCode = (attemptId) => {
+	
+		const a = attempts.find(attempt => attempt.id === attemptId)
+		if (a) {
+			setCode(a.code)
+			reRenderEditor()
+			setStats(a.stats)
+		} else {
+			console.error('Attempt not found for ID:', attemptId)
+		}
+	}
+
 
 	const handleSubmit = async () => {
 		console.log({ code, language, question, stats, parameters })
@@ -144,6 +165,7 @@ export default function EditorPage() {
 			setLoading(false)
 		}
 	}
+
 
 	const handleApproachSelect = async (approach) => {
 		console.log({ code, language, question, stats, parameters }, "tmmffkdk")
@@ -196,6 +218,7 @@ export default function EditorPage() {
 		}
 	}
 
+
 	return (
 		<div className="min-h-screen bg-neutral-950 flex relative">
 
@@ -231,6 +254,7 @@ export default function EditorPage() {
 
 						<div className="flex-1 flex flex-col pb-4 overflow-hidden">
 							<TextEditor
+								key={renderCodeEditor}
 								code={code}
 								stats={stats}
 								onCodeChange={setCode}
@@ -309,7 +333,11 @@ export default function EditorPage() {
 									feedback={feedback}
 								/>
 							) : (
-								<AttemptPanel attempts={attempts} />
+								<AttemptPanel
+									attempts={attempts}
+									changeCode={changeCode}
+
+								/>
 							)}
 						</div>
 					</div>

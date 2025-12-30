@@ -14,7 +14,6 @@ const TextEditor = ({ stats, onStatsChange, code, onCodeChange }) => {
   
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor; 
-
     editor.onDidChangeCursorPosition((e) => {
       setCursorPosition(e.position)
     })
