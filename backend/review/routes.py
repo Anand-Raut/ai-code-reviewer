@@ -40,8 +40,8 @@ class Feedback (BaseModel):
 
 
 @router.post("/getapproaches", response_model=Union[ApproachesResponse, None])
-def get_appraoches (request: ApproachRequest, current_user: dict = Depends(get_current_user)):
-    
+def fetch_approaches (request: ApproachRequest, current_user: dict = Depends(get_current_user)):
+    print("get_approaches run")
     try:
         data = get_approaches(request.question, request.code)
         return ApproachesResponse (
@@ -55,14 +55,6 @@ def get_appraoches (request: ApproachRequest, current_user: dict = Depends(get_c
 @router.post("/approachselect", response_model=Feedback)
 async def select_approach(request: ApproachSelect, current_user: dict = Depends(get_current_user)):
     #Store data in the DB
-    # NEED TO MAKE SURE THERE ARE NO DUPLICATE QUESTIONS, CODE (in attempts), DRAWBACKS, FEEDBACKS.
-    question = {
-        "question_text": request.question
-    }
-    result1 = db.Questions.insert_one(question)
-    question_id = result1.inserted_id
-
-
     try:
         drawback_ids = []
         data = get_feedback(request.question, request.approach, request.code, request.stats, request.parameters)
@@ -73,7 +65,6 @@ async def select_approach(request: ApproachSelect, current_user: dict = Depends(
         }
         result3 = db.Feedbacks.insert_one(feedback_doc)
         feedback_id = result3.inserted_id
-        print("yeyyeye")
         drawback_docs = [
             {
                 "drawback_text": drawback,
@@ -86,6 +77,13 @@ async def select_approach(request: ApproachSelect, current_user: dict = Depends(
 
         result4 = db.Drawbacks.insert_many(drawback_docs)
         drawback_ids.extend(result4.inserted_ids)
+
+        question = {
+            "question_text": request.question
+        }
+        result1 = db.Questions.insert_one(question)
+        question_id = result1.inserted_id
+
 
         attempt = {
         "user_id" :  current_user["user"],
@@ -157,6 +155,7 @@ async def get_user_questions(current_user: dict = Depends(get_current_user)):
 
 @router.get("/attempts/{question_id}")
 async def get_question_attempts(question_id: str, current_user: dict = Depends(get_current_user)):
+
     user_id = current_user["user"]
     attempts = list(
         db.Attempts
@@ -181,3 +180,21 @@ async def get_question_attempts(question_id: str, current_user: dict = Depends(g
             for a in attempts
         ]
     }
+
+
+# GET FEEDBACK & DRAWBACKS FOR AN ATTEMPT
+@router.get("/get-stored-feedback/{attempt_id}", response_model = Feedback)
+async def get_stored_feedback(attempt_id: str):
+    attempt= db.Attempts.find_one({"_id": ObjectId(attempt_id)})
+
+    feedback = db.Feedbacks.find_one({"_id": ObjectId(attempt["feedback_id"])})
+    drawback_ids = attempt["drawback_ids"]
+
+    drawbacks = list(db.Drawbacks.find({"_id": {"$in": drawback_ids}}))
+
+    print("Drawbacks: ", drawbacks, "feedback", feedback)
+
+    return Feedback (
+            feedback_text=feedback["feedback_text"],
+            drawbacks=[Drawback(drawback_text=d["drawback_text"]) for d in drawbacks]
+        )

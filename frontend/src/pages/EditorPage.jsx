@@ -14,7 +14,6 @@ export default function EditorPage() {
 	const [code, setCode] = useState('')
 	const [language, setLanguage] = useState('python')
 	const [question, setQuestion] = useState('')
-	const [feedback, setFeedback] = useState(null)
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState(null)
 	const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -24,19 +23,22 @@ export default function EditorPage() {
 	const [attempts, setAttempts] = useState([])
 	const [reviewSection, setReviewSection] = useState(true)
 	const [renderCodeEditor, reRenderCodeEditor] = useState(true)
- 
+
+	const [review, setReview] = useState(null)
+
+	const [existingDrawbacks, setExisingDrawbacks] = useState([])
+	const [resolvedDrawbacks, setResolvedDrawbacks] = useState([])
+
 	const handleClear = () => {
 		setCode('')
 		setQuestion('')
-		setFeedback(null)
+		setReview(null)
 		setError(null)
 		setApproaches(null)
 	}
 	const reRenderEditor = () => {
 		reRenderCodeEditor(!renderCodeEditor)
 	}
-
-
 	useEffect(() => {
 		const fetchQuestions = async () => {
 			try {
@@ -50,7 +52,7 @@ export default function EditorPage() {
 				})
 				if (response.ok) {
 					const data = await response.json()
-					console.log(data.questions)
+					console.log("questions: ", data.questions)
 					setQuestions(data.questions)
 				} else if (response.status === 401) {
 					setError('Session expired. Please login again.')
@@ -67,9 +69,7 @@ export default function EditorPage() {
 	}, [])
 
 
-	const changeQuestion = async (questionId) => {
-		const q = questions.find(q => q.id === questionId)
-		if (!q) return
+	const fetchAttempts = async (questionId) => {
 		setLoading(true)
 		const token = localStorage.getItem('token')
 
@@ -83,10 +83,7 @@ export default function EditorPage() {
 			})
 			if (response.ok) {
 				const data = await response.json()
-				console.log(data.attempts)
-				setAttempts(data.attempts)
-				setCode(data.attempts[0].code)
-				setQuestion(q.question_text)
+				return data
 			} else if (response.status === 401) {
 				setError('Session expired. Please login again.')
 				setTimeout(() => logout(), 2000)
@@ -99,12 +96,22 @@ export default function EditorPage() {
 		} finally {
 			setLoading(false)
 		}
-		// console.log(attempts)
+	}
+
+
+	const changeQuestion = async (questionId) => {
+		const q = questions.find(q => q.id === questionId)
+		if (!q) return
+		const data = await fetchAttempts(questionId)
+		console.log("attempts, ", data.attempts)
+		setAttempts(data.attempts)
+		setCode(data.attempts[0].code)
+		setQuestion(q.question_text)
 	}
 
 
 	const changeCode = (attemptId) => {
-	
+
 		const a = attempts.find(attempt => attempt.id === attemptId)
 		if (a) {
 			setCode(a.code)
@@ -115,9 +122,79 @@ export default function EditorPage() {
 		}
 	}
 
+	// REVIEW = FEEDBACK + DRAWBACKS
+	const fetchReview = async (attemptId) => {
+		try {
+			const token = localStorage.getItem('token')
+			const response = await fetch(`http://localhost:8000/api/get-stored-feedback/${attemptId}`, {
+				method: "GET",
+				headers: {
+					'Content-Type': 'application/json',
+					"Authorization": `Bearer ${token}`
+				}
+			})
+
+			if (response.ok) {
+				const data = await response.json()
+				setReview(data)
+			} else if (response.status === 401) {
+				setError('Session expired. Please login again.')
+				setTimeout(() => logout(), 2000)
+			} else {
+				setError('Failed to fetch questions.')
+			}
+
+		} catch (err) {
+			setError('Network error. Please check your connection.')
+			console.error('Review error:', err)
+		} finally {
+			setLoading(false)
+		}
+	}
+
+	const preSubmit = async () => {
+		console.log("preSubmit started")
+		const cleanQuestion = question.trim()
+		const cleanCode = code.trim()
+
+		console.log("Current question:", cleanQuestion)
+
+		const q = questions.find(q => q.question_text.trim() === cleanQuestion)
+		console.log("Found question:", q)
+		if (!q) {
+			console.log("Question not found, returning false")
+			return false
+		}
+
+		const data = await fetchAttempts(q.id)
+		console.log("Fetched data:", data)
+		if (!data) {
+			console.log("No data returned, returning false")
+			return false
+		}
+		const fetchedAttempts = data.attempts
+		console.log("Fetched attempts:", fetchedAttempts)
+
+		const attempt = fetchedAttempts.find((a) => a.code.trim() === cleanCode)
+		console.log("Matching attempt:", attempt)
+		console.log("Current code length:", cleanCode.length)
+		if (!attempt) {
+			console.log("No matching attempt, returning false")
+			return false
+		}
+
+		console.log("Found duplicate! Fetching review...")
+		await fetchReview(attempt.id)
+		setReviewSection(true)
+		return true
+	}
+
 
 	const handleSubmit = async () => {
-		console.log({ code, language, question, stats, parameters })
+
+		if (await preSubmit()) return
+
+		console.log("things that will be submitted: ", { code, language, question, stats, parameters })
 		if (!code.trim()) {
 			setError('Please enter some code to review')
 			return
@@ -148,10 +225,9 @@ export default function EditorPage() {
 
 			if (response.ok) {
 				const data = await response.json()
-				setFeedback(null)
+				setReview(null)
 				setApproaches(data)
 
-				// console.log(data)
 			} else if (response.status === 401) {
 				setError('Session expired. Please login again.')
 				setTimeout(() => logout(), 2000)
@@ -168,7 +244,7 @@ export default function EditorPage() {
 
 
 	const handleApproachSelect = async (approach) => {
-		console.log({ code, language, question, stats, parameters }, "tmmffkdk")
+		console.log("Things submitted after approach selection", { code, language, question, stats, parameters })
 		if (!code.trim()) {
 			setError('Please enter some code to review')
 			return
@@ -202,7 +278,7 @@ export default function EditorPage() {
 			if (response.ok) {
 				const data = await response.json()
 				setApproaches(null)
-				setFeedback(data)
+				setReview(data)
 
 			} else if (response.status === 401) {
 				setError('Session expired. Please login again.')
@@ -212,7 +288,7 @@ export default function EditorPage() {
 
 		} catch (err) {
 			setError('Network error. Please check your connection.')
-			console.log('Review error: ', err)
+			console.log('Review err	or: ', err)
 		} finally {
 			setLoading(false)
 		}
@@ -330,18 +406,17 @@ export default function EditorPage() {
 									approaches={approaches}
 									loading={loading}
 									onApproachSelect={handleApproachSelect}
-									feedback={feedback}
+									review={review}
 								/>
 							) : (
 								<AttemptPanel
 									attempts={attempts}
 									changeCode={changeCode}
-
+									fetchReview={fetchReview}
 								/>
 							)}
 						</div>
 					</div>
-
 				</main>
 			</div>
 			<div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-size-[14px_24px] z-0"></div>

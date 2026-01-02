@@ -17,10 +17,12 @@ const TextEditor = ({ stats, onStatsChange, code, onCodeChange }) => {
     editor.onDidChangeCursorPosition((e) => {
       setCursorPosition(e.position)
     })
+    console.log("editor mounted")
   };
 
+
   useEffect(() => {
-    console.log(stats, code)
+    console.log("stats and code: ", stats, code)
   }, [stats, code])
 
   const editedLines = (oldLines, newLines) => {
