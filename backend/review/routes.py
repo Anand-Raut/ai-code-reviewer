@@ -21,6 +21,7 @@ class ApproachSelect(BaseModel):
     stats: Dict[str, Any]
     language: str
     parameters: str
+    prev_drawbacks: str | None = None
     
 class ApproachRequest(BaseModel):
     code: str
@@ -36,7 +37,8 @@ class Drawback (BaseModel):
 
 class Feedback (BaseModel):
     feedback_text: str
-    drawbacks: List[Drawback]
+    resolved_drawbacks: List[Drawback]  # Add this
+    existing_drawbacks: List[Drawback]  # Add this
 
 
 @router.post("/getapproaches", response_model=Union[ApproachesResponse, None])
@@ -55,9 +57,13 @@ def fetch_approaches (request: ApproachRequest, current_user: dict = Depends(get
 @router.post("/approachselect", response_model=Feedback)
 async def select_approach(request: ApproachSelect, current_user: dict = Depends(get_current_user)):
     #Store data in the DB
+    
     try:
-        drawback_ids = []
-        data = get_feedback(request.question, request.approach, request.code, request.stats, request.parameters)
+        resolved_drawback_ids = []
+        existing_drawback_ids = []
+        
+        # DATA = GIVEN BY AI
+        data = get_feedback(request.question, request.approach, request.code, request.stats, request.parameters, request.prev_drawbacks)
         print(data)
         feedback_doc = {
             "feedback_text": data["feedback_text"],
@@ -65,35 +71,55 @@ async def select_approach(request: ApproachSelect, current_user: dict = Depends(
         }
         result3 = db.Feedbacks.insert_one(feedback_doc)
         feedback_id = result3.inserted_id
-        drawback_docs = [
+        resolved_drawback_docs = [
             {
                 "drawback_text": drawback,
                 "created_at": datetime.now(timezone.utc)
             }
-            for drawback in data["drawbacks"]
+            for drawback in data["resolved_drawbacks"]
         ]
-        print("drawback_docs: ", drawback_docs)
+        existing_drawback_docs = [
+            {
+                "drawback_text": drawback,
+                "created_at": datetime.now(timezone.utc)
+            }
+            for drawback in data["existing_drawbacks"]
+        ]
+        # print("drawback_docs: ", drawback_docs)
+        
+        
+        result4 = db.Drawbacks.insert_many(resolved_drawback_docs)
+        result5 = db.Drawbacks.insert_many(existing_drawback_docs)
+        resolved_drawback_ids.extend(result4.inserted_ids)
+        existing_drawback_ids.extend(result5.inserted_ids)
         
 
-        result4 = db.Drawbacks.insert_many(drawback_docs)
-        drawback_ids.extend(result4.inserted_ids)
-
-        question = {
-            "question_text": request.question
-        }
-        result1 = db.Questions.insert_one(question)
-        question_id = result1.inserted_id
-
+        res0 = db.Questions.find_one({"question_text": request.question.strip()})
+        if res0: # IN THE EXISTING DRAWBACKS ADD THE NEW ONES ONLY
+            question_id = res0["_id"]
+            saved_drawback_ids = res0.get("drawbacks", [])  # Get existing drawbacks
+            all_drawback_ids = list(set(saved_drawback_ids + existing_drawback_ids))
+            db.Questions.update_one(
+                {"_id": question_id},
+                {"$set": {"drawbacks": all_drawback_ids}}
+            )
+        else:
+            question = {
+                "question_text": request.question.strip(),
+                "drawbacks": existing_drawback_ids
+            }
+            result1 = db.Questions.insert_one(question)
+            question_id = result1.inserted_id
 
         attempt = {
-        "user_id" :  current_user["user"],
-        "question_id": question_id,
-        "code" :  request.code,
-        "stats":  request.stats,
-        "selected_approach": request.approach.model_dump(),
-        "feedback_id": feedback_id,
-        "drawback_ids": drawback_ids,
-        "created_at": datetime.now(timezone.utc)
+            "user_id" :  current_user["user"],
+            "question_id": question_id,
+            "code" :  request.code,
+            "stats":  request.stats,
+            "selected_approach": request.approach.model_dump(),
+            "feedback_id": feedback_id,
+            "resolved_drawback_ids": resolved_drawback_ids,
+            "created_at": datetime.now(timezone.utc)
         }
 
         result2 = db.Attempts.insert_one(attempt)
@@ -102,7 +128,12 @@ async def select_approach(request: ApproachSelect, current_user: dict = Depends(
 
         return Feedback (
             feedback_text=data["feedback_text"],
-            drawbacks=[Drawback(drawback_text=d) for d in data["drawbacks"]]
+            # drawbacks=[Drawback(drawback_text=d) for d in data["drawbacks"]],
+            resolved_drawbacks = [Drawback(drawback_text=d) for d in data.get("resolved_drawbacks", [])],
+            existing_drawbacks = [Drawback(drawback_text=d) for d in data.get("existing_drawbacks", [])]
+            # resolved_drawbacks=data.get("resolved_drawbacks", []),
+            # existing_drawbacks=data.get("existing_drawbacks", [])
+
         )
     except Exception as e:
         print(e)

@@ -26,9 +26,6 @@ export default function EditorPage() {
 
 	const [review, setReview] = useState(null)
 
-	const [existingDrawbacks, setExisingDrawbacks] = useState([])
-	const [resolvedDrawbacks, setResolvedDrawbacks] = useState([])
-
 	const handleClear = () => {
 		setCode('')
 		setQuestion('')
@@ -271,7 +268,9 @@ export default function EditorPage() {
 					question,
 					approach,
 					parameters,
-					stats
+					stats,
+					prev_drawbacks: null  // Add this - null for first attempt
+
 				})
 			})
 
