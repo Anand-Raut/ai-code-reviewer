@@ -39,7 +39,7 @@ class Feedback (BaseModel):
     feedback_text: str
     resolved_drawbacks: List[Drawback]  # Add this
     existing_drawbacks: List[Drawback]  # Add this
-
+    added_question: Dict[str, str] | None = None
 
 @router.post("/getapproaches", response_model=Union[ApproachesResponse, None])
 def fetch_approaches (request: ApproachRequest, current_user: dict = Depends(get_current_user)):
@@ -88,10 +88,13 @@ async def select_approach(request: ApproachSelect, current_user: dict = Depends(
         # print("drawback_docs: ", drawback_docs)
         
         
-        result4 = db.Drawbacks.insert_many(resolved_drawback_docs)
-        result5 = db.Drawbacks.insert_many(existing_drawback_docs)
-        resolved_drawback_ids.extend(result4.inserted_ids)
-        existing_drawback_ids.extend(result5.inserted_ids)
+        if resolved_drawback_docs:
+            result4 = db.Drawbacks.insert_many(resolved_drawback_docs)
+            resolved_drawback_ids.extend(result4.inserted_ids)
+        
+        if existing_drawback_docs:
+            result5 = db.Drawbacks.insert_many(existing_drawback_docs)
+            existing_drawback_ids.extend(result5.inserted_ids)
         
 
         res0 = db.Questions.find_one({"question_text": request.question.strip()})
@@ -117,6 +120,7 @@ async def select_approach(request: ApproachSelect, current_user: dict = Depends(
             "code" :  request.code,
             "stats":  request.stats,
             "selected_approach": request.approach.model_dump(),
+            "parameters": request.parameters,
             "feedback_id": feedback_id,
             "resolved_drawback_ids": resolved_drawback_ids,
             "created_at": datetime.now(timezone.utc)
@@ -125,15 +129,18 @@ async def select_approach(request: ApproachSelect, current_user: dict = Depends(
         result2 = db.Attempts.insert_one(attempt)
         if not result2.acknowledged:
             print("Failed to store the attempt in the database")
-
+        question= db.Questions.find_one({"_id": question_id})
         return Feedback (
             feedback_text=data["feedback_text"],
             # drawbacks=[Drawback(drawback_text=d) for d in data["drawbacks"]],
             resolved_drawbacks = [Drawback(drawback_text=d) for d in data.get("resolved_drawbacks", [])],
-            existing_drawbacks = [Drawback(drawback_text=d) for d in data.get("existing_drawbacks", [])]
+            existing_drawbacks = [Drawback(drawback_text=d) for d in data.get("existing_drawbacks", [])],
             # resolved_drawbacks=data.get("resolved_drawbacks", []),
             # existing_drawbacks=data.get("existing_drawbacks", [])
-
+            added_question = {
+                "id": str(question_id),
+                "question_text": question["question_text"]
+            } if question else None
         )
     except Exception as e:
         print(e)
@@ -206,6 +213,7 @@ async def get_question_attempts(question_id: str, current_user: dict = Depends(g
                 "code": a["code"],
                 "stats": a["stats"],
                 "selected_approach": a.get("selected_approach"),
+                "parameters": a.get("parameters"),
                 "created_at": a["created_at"]
             }
             for a in attempts
@@ -216,16 +224,24 @@ async def get_question_attempts(question_id: str, current_user: dict = Depends(g
 # GET FEEDBACK & DRAWBACKS FOR AN ATTEMPT
 @router.get("/get-stored-feedback/{attempt_id}", response_model = Feedback)
 async def get_stored_feedback(attempt_id: str):
-    attempt= db.Attempts.find_one({"_id": ObjectId(attempt_id)})
+    attempt = db.Attempts.find_one({"_id": ObjectId(attempt_id)})
+    
+    if not attempt:
+        raise HTTPException(status_code=404, detail="Attempt not found")
 
     feedback = db.Feedbacks.find_one({"_id": ObjectId(attempt["feedback_id"])})
-    drawback_ids = attempt["drawback_ids"]
+    
+    if not feedback:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+    
+    resolved_drawback_ids = attempt.get("resolved_drawback_ids", [])
+    existing_drawback_ids = attempt.get("existing_drawback_ids", [])
+    
+    resolved_drawbacks = list(db.Drawbacks.find({"_id": {"$in": resolved_drawback_ids}}))
+    existing_drawbacks = list(db.Drawbacks.find({"_id": {"$in": existing_drawback_ids}}))
 
-    drawbacks = list(db.Drawbacks.find({"_id": {"$in": drawback_ids}}))
-
-    print("Drawbacks: ", drawbacks, "feedback", feedback)
-
-    return Feedback (
-            feedback_text=feedback["feedback_text"],
-            drawbacks=[Drawback(drawback_text=d["drawback_text"]) for d in drawbacks]
-        )
+    return Feedback(
+        feedback_text=feedback["feedback_text"],
+        resolved_drawbacks=[Drawback(drawback_text=d["drawback_text"]) for d in resolved_drawbacks],
+        existing_drawbacks=[Drawback(drawback_text=d["drawback_text"]) for d in existing_drawbacks]
+    )

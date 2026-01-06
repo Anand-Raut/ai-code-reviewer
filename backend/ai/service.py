@@ -48,7 +48,8 @@ You are a programming mentor analyzing a student's coding session.
 OUTPUT FORMAT (strict JSON):
 {
   "feedback_text": string,
-  "drawbacks": [string, string, ...]
+  "resolved_drawbacks": [string, string, ...],
+  "existing_drawbacks": [string, string, ...]
 }
 
 INPUTS:
@@ -56,82 +57,87 @@ INPUTS:
 - QUESTION: Problem statement
 - STUDENT_CODE: Final submission
 - CODING_LOGS: Per-line stats {time_spent: ms, edit_count: number, content: code}
+- PREVIOUS_DRAWBACKS: Issues identified in previous attempts (if any)
+- FOCUS_PARAMETERS: Specific areas to analyze (e.g., "Space & Time Complexity", "Code Quality", "Best Practices")
 
 FEEDBACK REQUIREMENTS:
 1. Acknowledge their approach
-2. Assess correctness and efficiency
-3. Highlight struggle points from logs (high time_spent/edit_count)
-4. Address misconceptions
+2. Focus feedback and drawbacks ONLY on the FOCUS_PARAMETERS specified
+3. Assess based on the given parameters (e.g., if "Space & Time Complexity", analyze Big-O, memory usage)
+4. Highlight struggle points from logs (high time_spent/edit_count)
+5. Address misconceptions related to the focus parameters
 
-DRAWBACK EVIDENCE (cite at least one):
-- Line numbers & variable names
-- Timing data (e.g., "Line 8: 45000ms, 12 edits")
-- High edit_count = confusion/struggle
-- Code issues (bugs, O(n²), poor naming)
+DRAWBACK CATEGORIZATION:
+- For FIRST attempt: All drawbacks go in "existing_drawbacks", "resolved_drawbacks" is empty []
+- For SUBSEQUENT attempts with PREVIOUS_DRAWBACKS:
+  * "resolved_drawbacks": Issues from previous attempts that are now fixed in current code
+  * "existing_drawbacks": Issues that still exist from before + any NEW issues found
+
+DRAWBACK FOCUS:
+- ONLY identify drawbacks related to the FOCUS_PARAMETERS
+- Examples:
+  * "Space & Time Complexity": O(n²) loops, unnecessary memory allocation, redundant iterations
+  * "Code Quality": Poor naming, lack of comments, magic numbers, code duplication
+  * "Best Practices": Missing error handling, no input validation, security issues
 
 RULES:
 - Valid JSON only, no markdown
 - Evidence MUST be specific and cite logs or code
 - Be constructive, focus on learning
+- ALWAYS include both "resolved_drawbacks" and "existing_drawbacks" arrays (can be empty)
+- STAY FOCUSED on the specified FOCUS_PARAMETERS only
 """
 
 def get_approaches(question, code):
-	# response1 = client.responses.create(
-	# 	model="gpt-5-nano",
-	# 	reasoning={"effort": "low"},
-	# 	# response_format={"type": "json"},
-	# 	instructions= system_prompt1,
-	# 	input=f"""
-	# 		QUESTION:
-	# 		{question}
-	# 		STUDENT_CODE:
-	# 		{code}
-	# 		""",
-	# 	store=False,
-	# )
-	
-	# print(response1.output_text)
-	# return json.loads(response1.output_text)
-	return json.loads("""{
-		"approaches": [
-			{
-			"title": "Hash-map complement lookup",
-			"description": "As you iterate the array, store each seen value with its index in a hash map. For the current value, compute the needed complement as target minus the current value and check if that complement has already appeared. If it has, you can return the index of the complement and the current index. This enables a single-pass solution with O(n) average time and O(n) extra space."
-			}
-		]
-		}"""
+	response1 = client.responses.create(
+		model="gpt-5-nano",
+		reasoning={"effort": "low"},
+		# response_format={"type": "json"},
+		instructions= system_prompt1,
+		input=f"""
+			QUESTION:
+			{question}
+			STUDENT_CODE:
+			{code}
+			""",
+		store=False,
 	)
+	
+	try:
+		return json.loads(response1.output_text)
+	except json.JSONDecodeError as e:
+		print(f"JSON decode error in get_approaches: {e}")
+		print(f"Response text: {response1.output_text}")
+		raise
 
 
-def get_feedback(question, approach, code, stats, paramaters, prev_drawbacks):
-	# response2 = client.responses.create(
-	# 	model="gpt-5-nano",
-	# 	reasoning={"effort": "low"},
-	# 	instructions= system_prompt2,
-	# 	input=f"""
-	# 		CONFIRMED_APPROACH (AUTHORITATIVE):
-	# 		{approach}
-	# 		QUESTION: 
-	# 		{question}
-	# 		STUDENT_CODE:
-	# 		{code}
-	# 		CODING_LOGS:
-	# 		{stats}
-	# 		TASK:
-	# 		Generate mentoring feedback following the required JSON format.
-	# 		""",
-	# 	store=False,
-	# )
-	# return json.loads(response2.output_text)
-	return json.loads("""{
-		"feedback_text": "Great progress on your second attempt! You've successfully optimized the time complexity from O(n²) to O(n) by implementing the hash map approach. Your variable naming has also improved significantly. However, there are still some areas that need attention regarding edge cases and code documentation.",
-		"resolved_drawbacks": [
-			"Inefficient nested loop structure has been replaced with hash map lookup - time complexity improved from O(n²) to O(n)",
-			"Variable names are now descriptive - using 'complement' and 'seen_numbers' instead of 'temp' and 'x'"
-		],
-		"existing_drawbacks": [
-			"No input validation - code will crash with empty arrays or None input",
-			"Missing edge case handling for duplicate indices (when target is 2x an element)",
-			"Code lacks comments explaining the hash map lookup strategy"
-		]
-	}""")
+def get_feedback(question, approach, code, stats, parameters, prev_drawbacks):
+	response2 = client.responses.create(
+		model="gpt-5-nano",
+		reasoning={"effort": "low"},
+		instructions= system_prompt2,
+		input=f"""
+			CONFIRMED_APPROACH (AUTHORITATIVE):
+			{approach}
+			QUESTION: 
+			{question}
+			STUDENT_CODE:
+			{code}
+			CODING_LOGS:
+			{stats}
+			FOCUS_PARAMETERS:
+			{parameters}
+			PREVIOUS_DRAWBACKS:
+			{prev_drawbacks if prev_drawbacks else "None (first attempt)"}
+			TASK:
+			Generate mentoring feedback focused ONLY on the specified FOCUS_PARAMETERS.
+			""",
+		store=False,
+	)
+	
+	try:
+		return json.loads(response2.output_text)
+	except json.JSONDecodeError as e:
+		print(f"JSON decode error in get_feedback: {e}")
+		print(f"Response text: {response2.output_text}")
+		raise

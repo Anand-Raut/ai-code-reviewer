@@ -81,7 +81,7 @@ export default function Sidebar({ isOpen, questions, onToggle, changeQuestion, s
 
 				{/* User Section at Bottom */}
 				{isOpen ? (
-					<div className="p-3 border-t border-neutral-800">
+					<div className="p-3 border-t border-neutral-800" onClick={() => navigate('/profile')}>
 						<div className="flex items-center space-x-3 p-3 rounded-md bg-neutral-800">
 							<div className="w-9 h-9 rounded-full bg-neutral-700 flex items-center justify-center">
 								<svg className="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -179,6 +179,10 @@ export default function EditorPage() {
 			console.log("No matching attempt, returning false")
 			return false
 		}
+		if (attempt.parameters !== parameters) {
+			console.log("new set of parameters")
+			return false
+		}
 
 		console.log("Found duplicate! Fetching review...")
 		await fetchReview(attempt.id)
@@ -270,7 +274,6 @@ export default function EditorPage() {
 					parameters,
 					stats,
 					prev_drawbacks: null  // Add this - null for first attempt
-
 				})
 			})
 
@@ -278,7 +281,9 @@ export default function EditorPage() {
 				const data = await response.json()
 				setApproaches(null)
 				setReview(data)
-
+				if (data.added_question) {
+					setQuestions([...questions, data.added_question])
+				}
 			} else if (response.status === 401) {
 				setError('Session expired. Please login again.')
 			} else {

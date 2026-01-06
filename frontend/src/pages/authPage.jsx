@@ -6,15 +6,26 @@ import { Input } from "@/components/ui/input"
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Code2, Loader2 } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 function AuthPage() {
     const navigate = useNavigate()
+    const location = useLocation()
     const { login, signup, user } = useAuth()
     const [loginData, setLoginData] = useState({email: "", password: ""})
     const [signupData, setSignupData] = useState({name: "", email: "", password: ""})
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState("")
+    const [activeTab, setActiveTab] = useState("login")
+
+    useEffect(() => {
+        // Set tab based on route
+        if (location.pathname === '/signup') {
+            setActiveTab('signup')
+        } else if (location.pathname === '/login' || location.pathname === '/auth') {
+            setActiveTab('login')
+        }
+    }, [location.pathname])
 
     useEffect(() => {
         if (user) {
@@ -69,7 +80,7 @@ function AuthPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Tabs defaultValue="login" className="w-full">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                         <TabsList className="grid w-full grid-cols-2 mb-6 bg-neutral-800 border border-neutral-700">
                             <TabsTrigger 
                                 value="login" 
