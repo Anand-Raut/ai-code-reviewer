@@ -51,9 +51,9 @@ export default function Sidebar({ isOpen, questions, onToggle, changeQuestion, s
 
 				{isOpen && (
 					<nav className="flex-1 p-3 space-y-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-						<button 
+						<button
 							className="w-full flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-neutral-800 text-neutral-100 text-sm transition"
-							onClick={()=> {setCode("");setQuestion(""); onToggle()}}
+							onClick={() => { setCode(""); setQuestion(""); onToggle() }}
 						>
 							<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -69,7 +69,7 @@ export default function Sidebar({ isOpen, questions, onToggle, changeQuestion, s
 									<button
 										key={question.id}
 										className="w-full text-left px-3 py-2 rounded-md bg-neutral-800 hover:bg-neutral-700 text-sm text-neutral-100 transition"
-										onClick={() => {changeQuestion(question.id); onToggle()}}
+										onClick={() => { changeQuestion(question.id); onToggle() }}
 									>
 										{question.question_text}
 									</button>
@@ -82,11 +82,12 @@ export default function Sidebar({ isOpen, questions, onToggle, changeQuestion, s
 				{/* User Section at Bottom */}
 				{isOpen ? (
 					<div className="p-3 border-t border-neutral-800" onClick={() => navigate('/profile')}>
-						<div className="flex items-center space-x-3 p-3 rounded-md bg-neutral-800">
-							<div className="w-9 h-9 rounded-full bg-neutral-700 flex items-center justify-center">
-								<svg className="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-								</svg>
+						<div className="flex items-center space-x-3 p-3 rounded-md bg-neutral-800 cursor-pointer hover:bg-neutral-700 transition"
+							onClick={() => navigate('/profile')}>
+							<div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 flex items-center justify-center flex-shrink-0">
+								<span className="text-lg font-bold text-neutral-900">
+									{user?.name?.charAt(0).toUpperCase() || 'U'}
+								</span>
 							</div>
 							<div className="flex-1 min-w-0">
 								<div className="text-sm font-medium text-neutral-100 truncate">{user?.name || user?.username || 'User'}</div>
@@ -108,13 +109,13 @@ export default function Sidebar({ isOpen, questions, onToggle, changeQuestion, s
 					/* Collapsed user avatar */
 					<div className="p-3 border-t border-neutral-800 flex justify-center">
 						<button
-							onClick={onToggle}
-							className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center hover:bg-neutral-700 transition"
-							title="Open menu"
+							onClick={() => navigate('/profile')}
+							className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 flex items-center justify-center hover:opacity-80 transition"
+							title={user?.name || 'View Profile'}
 						>
-							<svg className="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-							</svg>
+							<span className="text-lg font-bold text-neutral-900">
+								{user?.name?.charAt(0).toUpperCase() || 'U'}
+							</span>
 						</button>
 					</div>
 				)}

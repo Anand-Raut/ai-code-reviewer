@@ -46,7 +46,7 @@ export default function ProfilePage() {
                     <div className="space-y-6">
                         {/* Avatar Section */}
                         <div className="flex items-center gap-6 pb-6 border-b border-neutral-800">
-                            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 flex items-center justify-center">
+                            <div className="w-20 h-20 rounded-full bg-linear-to-br from-emerald-400 to-cyan-400 flex items-center justify-center">
                                 <span className="text-3xl font-bold text-neutral-900">
                                     {user.name?.charAt(0).toUpperCase() || 'U'}
                                 </span>
