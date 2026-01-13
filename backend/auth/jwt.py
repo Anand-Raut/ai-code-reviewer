@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from jose import jwt
+from jose import jwt, JWTError, ExpiredSignatureError
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -16,5 +16,5 @@ def verify_token(token: str) -> dict | None:
     try:
         print(jwt.decode(token, SECRET, algorithms=[ALGORITHM]))
         return jwt.decode(token, SECRET, algorithms=[ALGORITHM])
-    except:
+    except (JWTError, ExpiredSignatureError):
         return None

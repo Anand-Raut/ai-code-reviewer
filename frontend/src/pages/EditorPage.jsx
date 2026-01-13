@@ -24,6 +24,7 @@ export default function EditorPage() {
 	const [reviewSection, setReviewSection] = useState(true)
 	const [renderCodeEditor, reRenderCodeEditor] = useState(true)
 
+	const [lastSubmission, setLastSubmission] = useState({})
 	const [review, setReview] = useState(null)
 
 	const handleClear = () => {
@@ -63,7 +64,7 @@ export default function EditorPage() {
 			}
 		}
 		fetchQuestions()
-	}, [])
+	}, [loading])
 
 
 	const fetchAttempts = async (questionId) => {
@@ -85,7 +86,7 @@ export default function EditorPage() {
 				setError('Session expired. Please login again.')
 				setTimeout(() => logout(), 2000)
 			} else {
-				setError('Failed to fetch questions.')
+				setError('Failed to fetch attempts.')
 			}
 		} catch (error) {
 			setError('Network error. Please check your connection.')
@@ -100,9 +101,17 @@ export default function EditorPage() {
 		const q = questions.find(q => q.id === questionId)
 		if (!q) return
 		const data = await fetchAttempts(questionId)
+		// FETCH ALL DRAWBACKS OF THIS QUESTION
+
 		console.log("attempts, ", data.attempts)
 		setAttempts(data.attempts)
-		setCode(data.attempts[0].code)
+		setAttempts(data.attempts)
+		if (data.attempts && data.attempts.length > 0) {
+			setCode(data.attempts[0].code)
+		} else {
+			setCode('')  // or keep current code
+		}
+		setQuestion(q.question_text)
 		setQuestion(q.question_text)
 	}
 
@@ -134,6 +143,8 @@ export default function EditorPage() {
 			if (response.ok) {
 				const data = await response.json()
 				setReview(data)
+				setReviewSection(true)
+
 			} else if (response.status === 401) {
 				setError('Session expired. Please login again.')
 				setTimeout(() => logout(), 2000)
@@ -192,10 +203,6 @@ export default function EditorPage() {
 
 
 	const handleSubmit = async () => {
-
-		if (await preSubmit()) return
-
-		console.log("things that will be submitted: ", { code, language, question, stats, parameters })
 		if (!code.trim()) {
 			setError('Please enter some code to review')
 			return
@@ -204,6 +211,16 @@ export default function EditorPage() {
 			setError('Please enter a question')
 			return
 		}
+		if (lastSubmission.code === code.trim() &&
+			lastSubmission.question === question.trim() &&
+			lastSubmission.parameters === parameters) {
+			console.log("Same as last submission, skipping")
+			return
+		}
+		if (await preSubmit()) return
+
+		console.log("things that will be submitted: ", { code, language, question, stats, parameters })
+
 
 		setLoading(true)
 		setError(null)
@@ -246,6 +263,12 @@ export default function EditorPage() {
 
 	const handleApproachSelect = async (approach) => {
 		console.log("Things submitted after approach selection", { code, language, question, stats, parameters })
+
+		setLastSubmission({
+			code: code.trim(),
+			question: question.trim(),
+			parameters: parameters
+		})
 		if (!code.trim()) {
 			setError('Please enter some code to review')
 			return
@@ -273,7 +296,6 @@ export default function EditorPage() {
 					approach,
 					parameters,
 					stats,
-					prev_drawbacks: null  // Add this - null for first attempt
 				})
 			})
 

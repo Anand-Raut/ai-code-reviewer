@@ -11,12 +11,12 @@ function App() {
     <AuthProvider>
       <Routes>
         <Route path="/" element={
-          <LandingPage />
-        } />
-        <Route path='/editor' element={
           <ProtectedRoute>
             <EditorPage />
           </ProtectedRoute>
+        } />
+        <Route path='/landing' element={
+          <LandingPage />
         } />
         <Route path='/profile' element={
           <ProtectedRoute>
@@ -27,7 +27,7 @@ function App() {
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/login" element={<AuthPage />} />
         <Route path="/signup" element={<AuthPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/landing" replace />} />
       </Routes>
     </AuthProvider>
   )

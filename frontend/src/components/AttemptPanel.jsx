@@ -46,11 +46,11 @@ const AttemptPanel = ({ attempts, changeCode, fetchReview }) => {
                     }}>
                     {attempt.code}
                   </SyntaxHighlighter>
-                  <p>Time Complexity: {attempt.time_complexity}</p>
-                  <p>Space Complexity: {attempt.space_complexity}</p>
+                  {/* <p>Time Complexity: {attempt.time_complexity}</p>
+                  <p>Space Complexity: {attempt.space_complexity}</p> */}
 
                   <Button className='border border-neutral-50' onClick = {()=> {changeCode(attempt.id)}}>copy to editor</Button>
-                  <p onClick={() => fetchReview()}>Click here to fetch the review</p>
+                  <p onClick={() => fetchReview(attempt.id)}>Click here to fetch the review</p>
                 </div>
               )}
             </div>

@@ -6,6 +6,7 @@ from database.database import db
 from datetime import datetime, timezone
 from ai.service import get_approaches, get_feedback
 from bson import ObjectId
+from pymongo import ReturnDocument
 
 
 router = APIRouter(prefix='/api', tags=["review"])
@@ -37,8 +38,8 @@ class Drawback (BaseModel):
 
 class Feedback (BaseModel):
     feedback_text: str
-    resolved_drawbacks: List[Drawback]  # Add this
-    existing_drawbacks: List[Drawback]  # Add this
+    resolved_drawbacks: List[Drawback]
+    existing_drawbacks: List[Drawback]
     added_question: Dict[str, str] | None = None
 
 @router.post("/getapproaches", response_model=Union[ApproachesResponse, None])
@@ -56,96 +57,107 @@ def fetch_approaches (request: ApproachRequest, current_user: dict = Depends(get
 
 @router.post("/approachselect", response_model=Feedback)
 async def select_approach(request: ApproachSelect, current_user: dict = Depends(get_current_user)):
-    #Store data in the DB
+    question_text = request.question.strip()
+    
+    # Fetch previous drawbacks
+    prev_drawbacks_query = db.Questions.find_one(
+        {"question_text": question_text}, 
+        {"_id": 0, "drawbacks": 1}
+    )
+    
+    prev_drawbacks = []
+    if prev_drawbacks_query and prev_drawbacks_query.get("drawbacks"):
+        prev_drawbacks_docs = list(db.Drawbacks.find(
+            {"_id": {"$in": prev_drawbacks_query["drawbacks"]}}
+        ))
+        prev_drawbacks = [d["drawback_text"] for d in prev_drawbacks_docs]
     
     try:
-        resolved_drawback_ids = []
-        existing_drawback_ids = []
+        # Get AI feedback
+        data = get_feedback(
+            question_text,
+            request.approach,   
+            request.code, 
+            request.stats, 
+            request.parameters, 
+            prev_drawbacks
+        )
         
-        # DATA = GIVEN BY AI
-        data = get_feedback(request.question, request.approach, request.code, request.stats, request.parameters, request.prev_drawbacks)
-        print(data)
+        # Store feedback
         feedback_doc = {
             "feedback_text": data["feedback_text"],
             "created_at": datetime.now(timezone.utc)
         }
-        result3 = db.Feedbacks.insert_one(feedback_doc)
-        feedback_id = result3.inserted_id
-        resolved_drawback_docs = [
-            {
-                "drawback_text": drawback,
+        result_feedback = db.Feedbacks.insert_one(feedback_doc)
+        feedback_id = result_feedback.inserted_id
+                
+        def get_or_create_drawback(text):
+            normalized = text.strip()
+            existing = db.Drawbacks.find_one({"drawback_text": normalized})
+            if existing:
+                return existing["_id"]
+            result = db.Drawbacks.insert_one({
+                "drawback_text": normalized,
                 "created_at": datetime.now(timezone.utc)
-            }
-            for drawback in data["resolved_drawbacks"]
-        ]
-        existing_drawback_docs = [
+            })
+            return result.inserted_id
+        
+        resolved_texts = set(data.get("resolved_drawbacks", []))
+        existing_texts = set(data.get("existing_drawbacks", []))
+        
+        overlap = resolved_texts & existing_texts
+        if overlap:
+            print(f"Warning: Drawbacks in both resolved and existing: {overlap}")
+            resolved_texts -= overlap
+        
+        resolved_drawback_ids = [get_or_create_drawback(text) for text in resolved_texts]
+        existing_drawback_ids = [get_or_create_drawback(text) for text in existing_texts]
+        
+        question = db.Questions.find_one_and_update(
             {
-                "drawback_text": drawback,
-                "created_at": datetime.now(timezone.utc)
-            }
-            for drawback in data["existing_drawbacks"]
-        ]
-        # print("drawback_docs: ", drawback_docs)
+                "question_text": question_text,
+            },
+            {
+                "$setOnInsert": {
+                    "question_text": question_text,
+                    "created_at": datetime.now(timezone.utc)
+                },
+                "$addToSet": {"drawbacks": {"$each": existing_drawback_ids}}
+            },
+            upsert=True,
+            return_document=ReturnDocument.AFTER
+        )
+        question_id = question["_id"]
         
-        
-        if resolved_drawback_docs:
-            result4 = db.Drawbacks.insert_many(resolved_drawback_docs)
-            resolved_drawback_ids.extend(result4.inserted_ids)
-        
-        if existing_drawback_docs:
-            result5 = db.Drawbacks.insert_many(existing_drawback_docs)
-            existing_drawback_ids.extend(result5.inserted_ids)
-        
-
-        res0 = db.Questions.find_one({"question_text": request.question.strip()})
-        if res0: # IN THE EXISTING DRAWBACKS ADD THE NEW ONES ONLY
-            question_id = res0["_id"]
-            saved_drawback_ids = res0.get("drawbacks", [])  # Get existing drawbacks
-            all_drawback_ids = list(set(saved_drawback_ids + existing_drawback_ids))
-            db.Questions.update_one(
-                {"_id": question_id},
-                {"$set": {"drawbacks": all_drawback_ids}}
-            )
-        else:
-            question = {
-                "question_text": request.question.strip(),
-                "drawbacks": existing_drawback_ids
-            }
-            result1 = db.Questions.insert_one(question)
-            question_id = result1.inserted_id
-
         attempt = {
-            "user_id" :  current_user["user"],
+            "user_id": current_user["user"],
             "question_id": question_id,
-            "code" :  request.code,
-            "stats":  request.stats,
+            "code": request.code,
+            "stats": request.stats,
             "selected_approach": request.approach.model_dump(),
             "parameters": request.parameters,
             "feedback_id": feedback_id,
             "resolved_drawback_ids": resolved_drawback_ids,
             "created_at": datetime.now(timezone.utc)
         }
-
-        result2 = db.Attempts.insert_one(attempt)
-        if not result2.acknowledged:
-            print("Failed to store the attempt in the database")
-        question= db.Questions.find_one({"_id": question_id})
-        return Feedback (
+        
+        result_attempt = db.Attempts.insert_one(attempt)
+        if not result_attempt.acknowledged:
+            raise HTTPException(status_code=500, detail="Failed to store attempt")
+        
+        return Feedback(
             feedback_text=data["feedback_text"],
-            # drawbacks=[Drawback(drawback_text=d) for d in data["drawbacks"]],
-            resolved_drawbacks = [Drawback(drawback_text=d) for d in data.get("resolved_drawbacks", [])],
-            existing_drawbacks = [Drawback(drawback_text=d) for d in data.get("existing_drawbacks", [])],
-            # resolved_drawbacks=data.get("resolved_drawbacks", []),
-            # existing_drawbacks=data.get("existing_drawbacks", [])
-            added_question = {
+            resolved_drawbacks=[Drawback(drawback_text=t) for t in resolved_texts],
+            existing_drawbacks=[Drawback(drawback_text=t) for t in existing_texts],
+            added_question={
                 "id": str(question_id),
-                "question_text": question["question_text"]
-            } if question else None
+                "question_text": question_text
+            }
         )
+        
     except Exception as e:
-        print(e)
-        raise HTTPException(status_code=500, detail=str(e))   
-
+        print(f"Error in select_approach: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/questions")
 async def get_user_questions(current_user: dict = Depends(get_current_user)):
@@ -167,13 +179,24 @@ async def get_user_questions(current_user: dict = Depends(get_current_user)):
         { "$unwind": "$question" },
 
         {
+            "$lookup": {
+            "from": "Drawbacks",
+            "localField": "question.drawbacks",
+            "foreignField": "_id",
+            "as": "drawback_docs"
+            }
+        },
+
+        {
             "$group": {
                 "_id": "$question._id",
                 "question_text": { "$first": "$question.question_text" },
+                "drawback_docs": { "$first": "$drawback_docs" },
                 "last_attempt": { "$max": "$created_at" }
 
             }
         },
+
         { "$sort": { "last_attempt": -1 } }
 
     ]
@@ -184,11 +207,13 @@ async def get_user_questions(current_user: dict = Depends(get_current_user)):
         "questions": [
             {
                 "id": str(r["_id"]),
-                "question_text": r["question_text"]
+                "question_text": r["question_text"],
+                "drawbacks": [d["drawback_text"] for d in r.get("drawback_docs", [])]
             }
             for r in result
         ]
     }
+
 
 
 @router.get("/attempts/{question_id}")
@@ -234,11 +259,34 @@ async def get_stored_feedback(attempt_id: str):
     if not feedback:
         raise HTTPException(status_code=404, detail="Feedback not found")
     
-    resolved_drawback_ids = attempt.get("resolved_drawback_ids", [])
-    existing_drawback_ids = attempt.get("existing_drawback_ids", [])
+    # Get the question to access all its drawbacks
+    question = db.Questions.find_one({"_id": ObjectId(attempt["question_id"])})
+    if not question:
+        raise HTTPException(status_code=404, detail="Question not found")
     
-    resolved_drawbacks = list(db.Drawbacks.find({"_id": {"$in": resolved_drawback_ids}}))
-    existing_drawbacks = list(db.Drawbacks.find({"_id": {"$in": existing_drawback_ids}}))
+    # TIMESTAMP-BASED FILTERING
+    # Get attempt creation time
+    attempt_created_at = attempt.get("created_at")
+    
+    # Get all drawbacks for this question that existed at the time of the attempt
+    all_drawback_ids = question.get("drawbacks", [])
+    all_drawbacks = list(db.Drawbacks.find({"_id": {"$in": all_drawback_ids}}))
+    
+    # Filter: Only drawbacks created BEFORE or AT the same time as this attempt
+    historical_drawbacks = [
+        d for d in all_drawbacks 
+        if d.get("created_at") and d["created_at"] <= attempt_created_at
+    ]
+    historical_drawback_ids = [d["_id"] for d in historical_drawbacks]
+    
+    # Resolved drawbacks from this specific attempt
+    resolved_drawback_ids = attempt.get("resolved_drawback_ids", [])
+
+    # Existing = Historical drawbacks - Resolved in this attempt
+    existing_drawback_ids = [d_id for d_id in historical_drawback_ids if d_id not in resolved_drawback_ids]
+    
+    resolved_drawbacks = [d for d in historical_drawbacks if d["_id"] in resolved_drawback_ids]
+    existing_drawbacks = [d for d in historical_drawbacks if d["_id"] in existing_drawback_ids]
 
     return Feedback(
         feedback_text=feedback["feedback_text"],

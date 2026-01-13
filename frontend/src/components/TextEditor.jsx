@@ -206,10 +206,6 @@ const TextEditor = ({ stats, onStatsChange, code, onCodeChange }) => {
         onChange={handleEditorChange}
         onMount={handleEditorDidMount}
       />
-
-      <pre style={{ color: "white", background: "#222", padding: 10 }}>
-        {JSON.stringify(stats, null, 2)}
-      </pre>
     </div>
   )
 }

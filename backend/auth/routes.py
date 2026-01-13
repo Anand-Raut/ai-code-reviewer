@@ -1,6 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, status
 from database.database import db
-from database.schemas import SignupRequest, LoginRequest, TokenResponse
+from database.schemas import SignupRequest, LoginRequest, TokenResponse, changePasswordRequest, ChangeNameRequest
 from .password import hash_password, verify_password
 from .jwt import create_access_token
 from .dependencies import get_current_user
@@ -18,7 +18,6 @@ async def signup(data: SignupRequest):
         "name": data.name,
         "email": data.email,
         "password_hash": hash_password(data.password),
-        "email_verified": False,
         "created_at": datetime.now(timezone.utc),
     }
 
@@ -58,14 +57,69 @@ async def get_current_user_info(user_info: dict = Depends(get_current_user)):
             "id": str(user["_id"]),
             "name": user["name"],
             "email": user["email"],
-            "token": user_info["token"]
         }
-    except Exception as e:
-        print(f"Error in /auth/me: {e}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 
 @router.get("/verify")
-async def verify_token_endpoint(user_id: str = Depends(get_current_user)):
-    return {"valid": True, "user_id": user_id}
+async def verify_token_endpoint(user_info: dict = Depends(get_current_user)):
+    return {"valid": True, "user_id": user_info["user"]}
+
+@router.post("/change-password")
+async def change_password(
+    data: changePasswordRequest,
+    user_info: dict = Depends(get_current_user)
+):
+    user_id = user_info["user"]
+
+    user = db.users.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not verify_password(data.old_password, user["password_hash"]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Old password is incorrect"
+        )
+
+    if verify_password(data.new_password, user["password_hash"]):
+        raise HTTPException(
+            status_code=400,
+            detail="New password must be different from old password"
+        )
+
+    result = db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"password_hash": hash_password(data.new_password)}}
+    )
+
+    if result.modified_count != 1:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to update password"
+        )
+
+    return {"detail": "Password updated successfully"}
+
+@router.post("/change-name")
+def change_name(
+    data: ChangeNameRequest,
+    user_info: dict = Depends(get_current_user)
+):
+    user_id = user_info["user"]
+
+    result = db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"name": data.new_name}}
+    )
+
+    if result.modified_count != 1:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to update name"
+        )
+
+    return {"detail": "Name updated successfully"}

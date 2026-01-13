@@ -12,7 +12,7 @@ function ProtectedRoute({ children }) {
         )
     }
     if (!user) {
-        return <Navigate to="/auth" replace />
+        return <Navigate to="/landing" replace />
     }
     
     return children

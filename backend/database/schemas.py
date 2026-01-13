@@ -12,3 +12,11 @@ class TokenResponse(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+class changePasswordRequest(BaseModel):
+    email: EmailStr
+    prev_password: str
+    old_password: str
+
+class ChangeNameRequest(BaseModel):
+    new_name: str

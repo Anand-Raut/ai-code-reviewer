@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from auth.routes import router as auth_router
 from review.routes import router as review_router
 
+
 app = FastAPI()
 
 app.add_middleware(CORSMiddleware,

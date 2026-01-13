@@ -79,7 +79,7 @@ export default function LandingPage() {
 								}}
 								size="lg"
 								variant="outline"
-								className="border-neutral-700 text-neutral-100 hover:bg-neutral-800 text-lg px-8 py-6"
+								className="border-neutral-700 text-neutral-700 hover:bg-neutral-800 text-lg px-8 py-6"
 							>
 								Learn More
 							</Button>

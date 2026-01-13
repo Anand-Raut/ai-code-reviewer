@@ -6,35 +6,32 @@ class User(BaseModel):
     name: str
     email: EmailStr
     password_hash: str
-    email_verified: bool = False
     created_at: Optional[datetime] = None
 
 
 class Question(BaseModel):
     question_text: str
+    drawbacks: List[str] = []  # Array of ObjectIds
     created_at: Optional[datetime] = None
 
 
 class Attempt(BaseModel):
     user_id: str
     question_id: str
-
     code: str
-    logs: dict
-
-    selected_approach: Optional[str] = None
-
+    stats: dict  # Changed from logs
+    selected_approach: Optional[dict] = None
+    parameters: Optional[str] = None
+    feedback_id: str
+    resolved_drawback_ids: List[str] = []
     created_at: Optional[datetime] = None
 
 
-# class Drawback(BaseModel): #for marking if drawbacks are resolved or not
-#     attempt_id: str
-#     user_id: str
-#     resolved: bool
+class Drawback(BaseModel):
+    drawback_text: str
+    created_at: Optional[datetime] = None
 
 
 class Feedback(BaseModel):
-    attempt_id: str
-    question_id: str
-    # drawbacks: List[Drawback]
+    feedback_text: str
     created_at: Optional[datetime] = None

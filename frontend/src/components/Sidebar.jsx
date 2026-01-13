@@ -2,7 +2,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 
 export default function Sidebar({ isOpen, questions, onToggle, changeQuestion, setCode, setQuestion }) {
-	const { user, email, logout } = useAuth()
+	const { user, logout } = useAuth()
 	const navigate = useNavigate()
 
 	const handleLogout = () => {
@@ -84,7 +84,7 @@ export default function Sidebar({ isOpen, questions, onToggle, changeQuestion, s
 					<div className="p-3 border-t border-neutral-800" onClick={() => navigate('/profile')}>
 						<div className="flex items-center space-x-3 p-3 rounded-md bg-neutral-800 cursor-pointer hover:bg-neutral-700 transition"
 							onClick={() => navigate('/profile')}>
-							<div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 flex items-center justify-center flex-shrink-0">
+							<div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 flex items-center justify-center shrink-0">
 								<span className="text-lg font-bold text-neutral-900">
 									{user?.name?.charAt(0).toUpperCase() || 'U'}
 								</span>
