@@ -137,7 +137,7 @@ export default function ProfilePage() {
                         <p className="text-neutral-400">Manage your profile and account preferences</p>
                     </div>
                     <Button
-                        onClick={() => navigate('/editor')}
+                        onClick={() => navigate('/')}
                         variant="outline"
                         className="bg-neutral-800 border-neutral-700 text-neutral-100 hover:bg-neutral-700 gap-2"
                     >
@@ -174,7 +174,7 @@ export default function ProfilePage() {
                         <CardContent className="space-y-6">
                             {/* Avatar */}
                             <div className="flex items-center gap-4">
-                                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 flex items-center justify-center">
+                                <div className="w-16 h-16 rounded-full bg-linear-to-br from-emerald-400 to-cyan-400 flex items-center justify-center">
                                     <span className="text-2xl font-bold text-neutral-900">
                                         {user.name?.charAt(0).toUpperCase() || 'U'}
                                     </span>

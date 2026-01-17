@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useState } from 'react'
+import { useEffect,  useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import TextEditor from '@/components/TextEditor'
 import Sidebar from '@/components/Sidebar'
@@ -18,21 +18,22 @@ export default function EditorPage() {
 	const [error, setError] = useState(null)
 	const [sidebarOpen, setSidebarOpen] = useState(false)
 	const [parameters, setParameter] = useState('Space & Time Complexity')
-	const [approaches, setApproaches] = useState(null)
+	// const [approaches, setApproaches] = useState(null)
 	const [questions, setQuestions] = useState([])
 	const [attempts, setAttempts] = useState([])
 	const [reviewSection, setReviewSection] = useState(true)
 	const [renderCodeEditor, reRenderCodeEditor] = useState(true)
-
 	const [lastSubmission, setLastSubmission] = useState({})
 	const [review, setReview] = useState(null)
+
+	const BASE_URL = 'http://localhost:8000/api'
 
 	const handleClear = () => {
 		setCode('')
 		setQuestion('')
 		setReview(null)
 		setError(null)
-		setApproaches(null)
+		// setApproaches(null)
 	}
 	const reRenderEditor = () => {
 		reRenderCodeEditor(!renderCodeEditor)
@@ -64,7 +65,7 @@ export default function EditorPage() {
 			}
 		}
 		fetchQuestions()
-	}, [loading])
+	}, [])
 
 
 	const fetchAttempts = async (questionId) => {
@@ -202,7 +203,68 @@ export default function EditorPage() {
 	}
 
 
+	// const handlefirstSubmit = async () => {
+	// 	if (!code.trim()) {
+	// 		setError('Please enter some code to review')
+	// 		return
+	// 	}
+	// 	if (!question.trim()) {
+	// 		setError('Please enter a question')
+	// 		return
+	// 	}
+	// 	if (lastSubmission.code === code.trim() &&
+	// 		lastSubmission.question === question.trim() &&
+	// 		lastSubmission.parameters === parameters) {
+	// 		console.log("Same as last submission, skipping")
+	// 		return
+	// 	}
+	// 	if (await preSubmit()) return
+
+	// 	console.log("things that will be submitted: ", { code, language, question, stats, parameters })
+
+
+	// 	setLoading(true)
+	// 	setError(null)
+
+	// 	try {
+	// 		const token = localStorage.getItem('token')
+	// 		const response = await fetch('http://localhost:8000/api/getapproaches', {
+	// 			method: 'POST',
+	// 			headers: {
+	// 				'Content-Type': 'application/json',
+	// 				'Authorization': `Bearer ${token}`
+	// 			},
+	// 			body: JSON.stringify({
+	// 				code,
+	// 				language,
+	// 				question,
+	// 				parameters,
+	// 			})
+	// 		})
+
+	// 		if (response.ok) {
+	// 			const data = await response.json()
+	// 			setReview(null)
+	// 			setApproaches(data)
+
+	// 		} else if (response.status === 401) {
+	// 			setError('Session expired. Please login again.')
+	// 			setTimeout(() => logout(), 2000)
+	// 		} else {
+	// 			setError('Failed to review code. Please try again.')
+	// 		}
+	// 	} catch (err) {
+	// 		setError('Network error. Please check your connection.')
+	// 		console.error('Review error:', err)
+	// 	} finally {
+	// 		setLoading(false)
+	// 	}
+	// }
+
+
 	const handleSubmit = async () => {
+		console.log("Things submitted after submit", { code, language, question, stats, parameters })
+
 		if (!code.trim()) {
 			setError('Please enter some code to review')
 			return
@@ -218,72 +280,18 @@ export default function EditorPage() {
 			return
 		}
 		if (await preSubmit()) return
-
-		console.log("things that will be submitted: ", { code, language, question, stats, parameters })
-
-
-		setLoading(true)
-		setError(null)
-
-		try {
-			const token = localStorage.getItem('token')
-			const response = await fetch('http://localhost:8000/api/getapproaches', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'Authorization': `Bearer ${token}`
-				},
-				body: JSON.stringify({
-					code,
-					language,
-					question,
-					parameters,
-				})
-			})
-
-			if (response.ok) {
-				const data = await response.json()
-				setReview(null)
-				setApproaches(data)
-
-			} else if (response.status === 401) {
-				setError('Session expired. Please login again.')
-				setTimeout(() => logout(), 2000)
-			} else {
-				setError('Failed to review code. Please try again.')
-			}
-		} catch (err) {
-			setError('Network error. Please check your connection.')
-			console.error('Review error:', err)
-		} finally {
-			setLoading(false)
-		}
-	}
-
-
-	const handleApproachSelect = async (approach) => {
-		console.log("Things submitted after approach selection", { code, language, question, stats, parameters })
-
 		setLastSubmission({
 			code: code.trim(),
 			question: question.trim(),
 			parameters: parameters
 		})
-		if (!code.trim()) {
-			setError('Please enter some code to review')
-			return
-		}
-		if (!question.trim()) {
-			setError('Please enter a question')
-			return
-		}
 
 		setLoading(true)
 		setError(null)
 
 		try {
 			const token = localStorage.getItem('token')
-			const response = await fetch('http://localhost:8000/api/approachselect', {
+			const response = await fetch(`${BASE_URL}/submit`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -293,7 +301,6 @@ export default function EditorPage() {
 					code,
 					language,
 					question,
-					approach,
 					parameters,
 					stats,
 				})
@@ -301,7 +308,7 @@ export default function EditorPage() {
 
 			if (response.ok) {
 				const data = await response.json()
-				setApproaches(null)
+				// setApproaches(null)
 				setReview(data)
 				if (data.added_question) {
 					setQuestions([...questions, data.added_question])
@@ -311,10 +318,9 @@ export default function EditorPage() {
 			} else {
 				setError('Failed to review code. Please try again.')
 			}
-
 		} catch (err) {
 			setError('Network error. Please check your connection.')
-			console.log('Review err	or: ', err)
+			console.log('Review error: ', err)
 		} finally {
 			setLoading(false)
 		}
@@ -332,6 +338,8 @@ export default function EditorPage() {
 				changeQuestion={changeQuestion}
 				setCode={setCode}
 				setQuestion={setQuestion}
+				setAttempts={setAttempts}
+				setReview={setReview}
 			/>
 
 			{/* Main Content */}
@@ -382,7 +390,7 @@ export default function EditorPage() {
 							</div>
 
 							<Button
-								onClick={handleSubmit}
+								onClick={() => handleSubmit()}
 								disabled={loading}
 								className="bg-neutral-100 hover:bg-neutral-200 text-neutral-900 font-semibold shadow-lg transition-all duration-200"
 							>
@@ -429,9 +437,9 @@ export default function EditorPage() {
 							{/* Content Area */}
 							{reviewSection ? (
 								<AiReviewPanel
-									approaches={approaches}
+									// approaches={approaches}
 									loading={loading}
-									onApproachSelect={handleApproachSelect}
+									// onApproachSelect={handleApproachSelect}
 									review={review}
 								/>
 							) : (

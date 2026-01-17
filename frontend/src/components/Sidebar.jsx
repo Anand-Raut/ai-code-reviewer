@@ -1,7 +1,7 @@
 import { useAuth } from '@/context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 
-export default function Sidebar({ isOpen, questions, onToggle, changeQuestion, setCode, setQuestion }) {
+export default function Sidebar({ isOpen, questions, onToggle, changeQuestion, setCode, setQuestion, setAttempts, setReview }) {
 	const { user, logout } = useAuth()
 	const navigate = useNavigate()
 
@@ -19,14 +19,7 @@ export default function Sidebar({ isOpen, questions, onToggle, changeQuestion, s
 				/>
 			)}
 
-			<aside className={`
-                fixed lg:sticky top-0 left-0 h-screen z-50 
-                bg-neutral-900 border-r border-neutral-800
-                transition-all duration-300 ease-in-out
-                ${isOpen ? 'w-1/3' : 'w-0 -translate-x-full lg:translate-x-0 lg:w-16'}
-                flex flex-col justify-between 
-                overflow-hidden
-            `}>
+			<aside className={`fixed lg:sticky top-0 left-0 h-screen z-50 bg-neutral-900 border-r border-neutral-800 transition-all duration-300 ease-in-out ${isOpen ? 'w-1/3' : 'w-0 -translate-x-full lg:translate-x-0 lg:w-16'} flex flex-col justify-between overflow-hidden `}>
 				<div className="p-4 border-b border-neutral-800 flex items-center justify-between">
 					<button
 						onClick={onToggle}
@@ -53,7 +46,7 @@ export default function Sidebar({ isOpen, questions, onToggle, changeQuestion, s
 					<nav className="flex-1 p-3 space-y-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
 						<button
 							className="w-full flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-neutral-800 text-neutral-100 text-sm transition"
-							onClick={() => { setCode(""); setQuestion(""); onToggle() }}
+							onClick={() => { setCode(""); setQuestion(""); setAttempts([]); setReview(null); onToggle() }}
 						>
 							<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -84,7 +77,7 @@ export default function Sidebar({ isOpen, questions, onToggle, changeQuestion, s
 					<div className="p-3 border-t border-neutral-800" onClick={() => navigate('/profile')}>
 						<div className="flex items-center space-x-3 p-3 rounded-md bg-neutral-800 cursor-pointer hover:bg-neutral-700 transition"
 							onClick={() => navigate('/profile')}>
-							<div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 flex items-center justify-center shrink-0">
+							<div className="w-10 h-10 rounded-full bg-linear-to-br from-emerald-400 to-cyan-400 flex items-center justify-center shrink-0">
 								<span className="text-lg font-bold text-neutral-900">
 									{user?.name?.charAt(0).toUpperCase() || 'U'}
 								</span>
@@ -110,7 +103,7 @@ export default function Sidebar({ isOpen, questions, onToggle, changeQuestion, s
 					<div className="p-3 border-t border-neutral-800 flex justify-center">
 						<button
 							onClick={() => navigate('/profile')}
-							className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 flex items-center justify-center hover:opacity-80 transition"
+							className="w-10 h-10 rounded-full bg-linear-to-br from-emerald-400 to-cyan-400 flex items-center justify-center hover:opacity-80 transition"
 							title={user?.name || 'View Profile'}
 						>
 							<span className="text-lg font-bold text-neutral-900">

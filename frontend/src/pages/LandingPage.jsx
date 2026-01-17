@@ -9,7 +9,7 @@ export default function LandingPage() {
 	return (
 		<div className="min-h-screen bg-neutral-950 relative overflow-hidden">
 			{/* Background Grid */}
-			<div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:14px_24px]"></div>
+			<div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-size[14px_24px]"></div>
 
 			{/* Hero Section */}
 			<div className="relative z-10">
@@ -25,7 +25,7 @@ export default function LandingPage() {
 					<div className="flex items-center gap-4">
 						{user ? (
 							<Button
-								onClick={() => navigate('/editor')}
+								onClick={() => navigate('/')}
 								className="bg-neutral-100 hover:bg-neutral-200 text-neutral-900 font-semibold"
 							>
 								Go to Editor
@@ -55,7 +55,7 @@ export default function LandingPage() {
 					<div className="max-w-4xl mx-auto space-y-8">
 						<h1 className="text-6xl font-bold text-neutral-100 leading-tight">
 							Master Coding with
-						<span className="block text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-500">
+						<span className="block text-transparent bg-clip-text bg-linear-to-r from-emerald-400 to-blue-500">
 							AI-Powered Feedback
 						</span>
 						</h1>
@@ -67,7 +67,7 @@ export default function LandingPage() {
 
 						<div className="flex gap-4 justify-center pt-4">
 							<Button
-								onClick={() => navigate(user ? '/editor' : '/auth')}
+								onClick={() => navigate(user ? '/' : '/auth')}
 								size="lg"
 								className="bg-neutral-100 hover:bg-neutral-200 text-neutral-900 font-semibold text-lg px-8 py-6"
 							>
@@ -141,7 +141,7 @@ export default function LandingPage() {
 			{/* CTA Section */}
 			<div className="relative z-10 py-20">
 				<div className="container mx-auto px-6 text-center">
-					<div className="max-w-3xl mx-auto bg-gradient-to-r from-emerald-900/20 to-blue-900/20 border border-neutral-800 rounded-lg p-12">
+					<div className="max-w-3xl mx-auto bg-linear-to-r from-emerald-900/20 to-blue-900/20 border border-neutral-800 rounded-lg p-12">
 						<h2 className="text-4xl font-bold text-neutral-100 mb-4">
 							Ready to Level Up Your Coding Skills?
 						</h2>
@@ -149,7 +149,7 @@ export default function LandingPage() {
 							Join thousands of developers improving their code quality with AI-powered feedback.
 						</p>
 						<Button
-							onClick={() => navigate(user ? '/editor' : '/signup')}
+							onClick={() => navigate(user ? '/' : '/signup')}
 							size="lg"
 							className="bg-neutral-100 hover:bg-neutral-200 text-neutral-900 font-semibold text-lg px-8 py-6"
 						>
