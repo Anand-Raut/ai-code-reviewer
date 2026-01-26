@@ -11,20 +11,6 @@ from pymongo import ReturnDocument
 
 router = APIRouter(prefix='/api', tags=["review"])
 
-# class Approach(BaseModel):
-#     title: str
-#     description: str
-
- 
-# class ApproachRequest(BaseModel):
-    # code: str
-    # language: str
-    # question: str
-    # parameters: str
-
-# class ApproachesResponse (BaseModel):
-#     approaches: List[Approach]
-
 class submitRequest(BaseModel):
     code: str
     question: str
@@ -41,19 +27,6 @@ class Review (BaseModel):
     resolved_drawbacks: List[Drawback]
     existing_drawbacks: List[Drawback]
     added_question: Dict[str, str] | None = None
-
-# @router.post("/getapproaches", response_model=Union[ApproachesResponse, None])
-# def fetch_approaches (request: ApproachRequest, current_user: dict = Depends(get_current_user)):
-#     print("get_approaches run")
-#     try:
-#         data = get_approaches(request.question, request.code)
-#         return ApproachesResponse (
-#             approaches=data["approaches"]
-#         )
-#     except Exception as e:
-#         print(e)
-#         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.post("/submit", response_model=Review)
 async def submit(request: submitRequest, current_user: dict = Depends(get_current_user)):
@@ -92,8 +65,8 @@ async def submit(request: submitRequest, current_user: dict = Depends(get_curren
         }
         result_feedback = db.Feedbacks.insert_one(feedback_doc)
         feedback_id = result_feedback.inserted_id
-                
-        def get_or_create_drawback(text):
+
+        def get_or_create_drawback(text): # TO RETURN THE IDs OF THE CREATED/EXISTING DRAWBACK
             normalized = text.strip()
             existing = db.Drawbacks.find_one({"drawback_text": normalized})
             if existing:
@@ -115,6 +88,9 @@ async def submit(request: submitRequest, current_user: dict = Depends(get_curren
         resolved_drawback_ids = [get_or_create_drawback(text) for text in resolved_texts]
         existing_drawback_ids = [get_or_create_drawback(text) for text in existing_texts]
         
+        # Check if question already exists before upsert
+        existing_question = db.Questions.find_one({"question_text": question_text})
+        
         question = db.Questions.find_one_and_update(
             {
                 "question_text": question_text,
@@ -130,7 +106,7 @@ async def submit(request: submitRequest, current_user: dict = Depends(get_curren
             return_document=ReturnDocument.AFTER
         )
         question_id = question["_id"]
-        
+
         attempt = {
             "user_id": current_user["user"],
             "question_id": question_id,
@@ -147,12 +123,12 @@ async def submit(request: submitRequest, current_user: dict = Depends(get_curren
         result_attempt = db.Attempts.insert_one(attempt)
         if not result_attempt.acknowledged:
             raise HTTPException(status_code=500, detail="Failed to store attempt")
-        
+
         return Review(
             feedback_text=data["feedback_text"],
             resolved_drawbacks=[Drawback(drawback_text=t) for t in resolved_texts],
             existing_drawbacks=[Drawback(drawback_text=t) for t in existing_texts],
-            added_question={"id": str(question_id), "question_text": question_text} if result_attempt.inserted_id else None
+            added_question={"id": str(question_id), "question_text": question_text} if not existing_question else None
         )
     except HTTPException:
         raise 
@@ -250,6 +226,7 @@ async def get_question_attempts(question_id: str, current_user: dict = Depends(g
 
 @router.get("/get-stored-feedback/{attempt_id}", response_model = Review)
 async def get_stored_feedback(attempt_id: str):
+
     attempt = db.Attempts.find_one({"_id": ObjectId(attempt_id)})
     
     if not attempt:
@@ -294,3 +271,34 @@ async def get_stored_feedback(attempt_id: str):
         resolved_drawbacks=[Drawback(drawback_text=d["drawback_text"]) for d in resolved_drawbacks],
         existing_drawbacks=[Drawback(drawback_text=d["drawback_text"]) for d in existing_drawbacks]
     )
+
+
+
+
+
+# class Approach(BaseModel):
+#     title: str
+#     description: str
+
+ 
+# class ApproachRequest(BaseModel):
+    # code: str
+    # language: str
+    # question: str
+    # parameters: str
+
+# class ApproachesResponse (BaseModel):
+#     approaches: List[Approach]
+
+
+# @router.post("/getapproaches", response_model=Union[ApproachesResponse, None])
+# def fetch_approaches (request: ApproachRequest, current_user: dict = Depends(get_current_user)):
+#     print("get_approaches run")
+#     try:
+#         data = get_approaches(request.question, request.code)
+#         return ApproachesResponse (
+#             approaches=data["approaches"]
+#         )
+#     except Exception as e:
+#         print(e)
+#         raise HTTPException(status_code=500, detail=str(e))
