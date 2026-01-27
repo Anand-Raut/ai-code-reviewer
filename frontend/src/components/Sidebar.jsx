@@ -1,8 +1,52 @@
 import { useAuth } from '@/context/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
 
+function QuestionButton({ question, onClick }) {
+    const buttonRef = useRef(null)
+    const [isExpanded, setIsExpanded] = useState(false)
+    const [clamp, setClamp] = useState(true)
+
+    useEffect(() => {
+        if (buttonRef.current) {
+            if (isExpanded) {
+                buttonRef.current.style.height = `${buttonRef.current.scrollHeight}px`
+                setClamp(false)
+            } else {
+                buttonRef.current.style.height = '2.8rem'
+                // Delay clamp until after transition
+                setTimeout(() => setClamp(true), 300) // match duration-300
+            }
+        }
+    }, [isExpanded])
+
+    // If you want to be extra robust, use onTransitionEnd instead of setTimeout:
+    // const handleTransitionEnd = () => { if (!isExpanded) setClamp(true) }
+
+    return (
+        <div
+            onMouseEnter={() => setIsExpanded(true)}
+            onMouseLeave={() => setIsExpanded(false)}
+            // onTransitionEnd={handleTransitionEnd} // if using onTransitionEnd
+        >
+            <button
+                ref={buttonRef}
+                className="w-full text-left px-3 py-2 rounded-md bg-neutral-800 hover:bg-neutral-700 text-sm text-neutral-100 transition-[height] duration-300 ease-in-out overflow-hidden leading-tight"
+                style={{
+                    display: '-webkit-box',
+                    WebkitBoxOrient: 'vertical',
+                    WebkitLineClamp: clamp ? '2' : 'unset',
+                    overflow: 'hidden'
+                }}
+                onClick={onClick}
+            >
+                {question.question_text}
+            </button>
+        </div>
+    )
+}
 export default function Sidebar({ isOpen, questions, onToggle, changeQuestion,
-								 setCode, setQuestion, setAttempts, setReview }) {
+	setCode, setQuestion, setAttempts, setReview }) {
 	const { user, logout } = useAuth()
 	const navigate = useNavigate()
 
@@ -59,14 +103,12 @@ export default function Sidebar({ isOpen, questions, onToggle, changeQuestion,
 							<div className="text-xs text-neutral-500 px-3 py-2">Previous attempted questions</div>
 
 							<div className="space-y-1 mt-2">
-								{questions.map((question, index) => (
-									<button
+								{questions.map((question) => (
+									<QuestionButton
 										key={question.id}
-										className="w-full text-left px-3 py-2 rounded-md bg-neutral-800 hover:bg-neutral-700 text-sm text-neutral-100 transition"
+										question={question}
 										onClick={() => { changeQuestion(question.id); onToggle() }}
-									>
-										{question.question_text}
-									</button>
+									/>
 								))}
 							</div>
 						</div>

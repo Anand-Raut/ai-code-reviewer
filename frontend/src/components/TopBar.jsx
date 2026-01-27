@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 const LANGUAGES = [
   { value: 'javascript', label: 'JavaScript' },
@@ -19,20 +19,34 @@ const PARAMETERS = [
 
 export default function TopBar({ question, onQuestionChange, language, onLanguageChange, onParametersChange, parameters, handleSubmit, loading, disabled }) {
   const selectedLanguage = LANGUAGES.find(lang => lang.value === language)
+  const questionareaRef = useRef(null)
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  useEffect(() => {
+    console.log('Effect running:', isExpanded, questionareaRef.current?.scrollHeight)
+
+    if (questionareaRef.current && isExpanded) {
+      questionareaRef.current.style.height = `${questionareaRef.current.scrollHeight}px`
+    } else if (questionareaRef.current) {
+      questionareaRef.current.style.height = '3rem'
+    }
+  }, [isExpanded, question])
 
   return (
 
     <div className="space-y-3">
 
-      <div>
+      <div
+        onMouseEnter={() => setIsExpanded(true)}
+        onMouseLeave={() => setIsExpanded(false)}>
         <textarea
           placeholder="Enter your question"
           value={question}
           onChange={(e) => onQuestionChange(e.target.value)}
-          rows={2}
-          disabled = {disabled}
-          className="w-full bg-neutral-800 border border-neutral-700 rounded-md px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-600 focus:border-neutral-600 transition-all resize-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-        />
+          disabled={disabled}
+          ref={questionareaRef}
+          className="w-full bg-neutral-800 border border-neutral-700 rounded-md px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-600 focus:border-neutral-600 transition-[height] duration-300 ease-in-out overflow-hidden resize-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" 
+          />
       </div>
 
 
