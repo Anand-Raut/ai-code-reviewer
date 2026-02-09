@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { Editor } from '@monaco-editor/react'
 
 
+const normalizeText = (text) => text.replace(/\r\n/g, '\n').trim();
+
 const TextEditor = ({ stats, onStatsChange, code, onCodeChange }) => {
 
   const prevCodeRef = useRef("")
@@ -10,20 +12,47 @@ const TextEditor = ({ stats, onStatsChange, code, onCodeChange }) => {
   const activeLinesRef = useRef(new Set())
   const editorRef = useRef(null);
   const [cursorPosition, setCursorPosition] = useState(null)
-  
-  
+  const internalClipboardRef = useRef(new Set());
+
+
   const handleEditorDidMount = (editor, monaco) => {
-    editorRef.current = editor; 
+    editorRef.current = editor;
     editor.onDidChangeCursorPosition((e) => {
       setCursorPosition(e.position)
     })
-    console.log("editor mounted")
-  };
+
+    editor.onDidChangeCursorSelection((e) => {
+      const selection = editor.getSelection()
+
+      if (selection && !selection.isEmpty()) {
+        const selectedText = editor.getModel().getValueInRange(selection)
+
+        const handleCopy = (e) => {
+          const normalizedText = normalizeText(selectedText);
+          internalClipboardRef.current.add(normalizedText);
+          console.log(`✅ Copied to internal clipboard: ${internalClipboardRef.current}`)
+        }
+
+        document.addEventListener('copy', handleCopy, { once: true })
+        document.addEventListener('cut', handleCopy, { once: true })
+      }
+    })
+    editor.onDidPaste((e) => {
+      const pastedText = editor.getModel().getValueInRange(e.range);
+      const normalizedPasted = normalizeText(pastedText);
+
+      if (!internalClipboardRef.current.has(normalizedPasted)) {
+        editor.trigger("keyboard", "undo", null);
+
+      }
+    });
+
+  }
+  // useEffect(() => {
+  //   console.log("stats and code: ", stats, code)
+  // }, [stats, code])
 
 
-  useEffect(() => {
-    console.log("stats and code: ", stats, code)
-  }, [stats, code])
 
   const editedLines = (oldLines, newLines) => {
 
@@ -57,40 +86,40 @@ const TextEditor = ({ stats, onStatsChange, code, onCodeChange }) => {
   };
 
   const handleNewLine = (oldLines, newLines) => {
-  if (!cursorPosition){
-    return stats
-  }
-  
-  let idx = 0
-  const lineDiff = newLines.length - oldLines.length
+    if (!cursorPosition) {
+      return stats
+    }
 
-  for (idx; idx < oldLines.length; idx++) {
-    if (oldLines[idx] !== newLines[idx]){
-      break
-    }
-  }
+    let idx = 0
+    const lineDiff = newLines.length - oldLines.length
 
-  const shifted = {}
-  
-  Object.keys(stats).forEach((key) => {
-    const lineNum = parseInt(key)
-    if (lineNum >= idx + 1) {
-      shifted[lineNum + lineDiff] = stats[lineNum]
-    } else {
-      shifted[lineNum] = stats[lineNum]
+    for (idx; idx < oldLines.length; idx++) {
+      if (oldLines[idx] !== newLines[idx]) {
+        break
+      }
     }
-  })
-  
-  for (let i = 0; i < lineDiff; i++) {
-    shifted[idx + 1 + i] = {
-      time_spent: 0,
-      edit_count: 0,
-      content: newLines[idx + i]
+
+    const shifted = {}
+
+    Object.keys(stats).forEach((key) => {
+      const lineNum = parseInt(key)
+      if (lineNum >= idx + 1) {
+        shifted[lineNum + lineDiff] = stats[lineNum]
+      } else {
+        shifted[lineNum] = stats[lineNum]
+      }
+    })
+
+    for (let i = 0; i < lineDiff; i++) {
+      shifted[idx + 1 + i] = {
+        time_spent: 0,
+        edit_count: 0,
+        content: newLines[idx + i]
+      }
     }
+
+    return shifted  // Return instead of calling onStatsChange
   }
-  
-  return shifted  // Return instead of calling onStatsChange
-}
 
   const handleEditorChange = (value) => {
 
@@ -149,7 +178,9 @@ const TextEditor = ({ stats, onStatsChange, code, onCodeChange }) => {
         // cap insane jumps (tab switch, idle)
         if (delta < 5000) {
           activeLinesRef.current.forEach((lineNumber) => {
-            newStats[lineNumber].time_spent += delta;
+            if (newStats[lineNumber]) {  // Add this check
+              newStats[lineNumber].time_spent += delta;
+            }
           });
         }
       }

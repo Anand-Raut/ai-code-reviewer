@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Dict, Any, Union
 from auth.dependencies import get_current_user
 from database.database import db
@@ -7,16 +7,25 @@ from datetime import datetime, timezone
 from ai.service import get_feedback
 from bson import ObjectId
 from pymongo import ReturnDocument
+from bson.errors import InvalidId
+
 
 router = APIRouter(prefix='/api', tags=["review"])
 
 class submitRequest(BaseModel):
-    code: str
-    question: str
+    code: str = Field(..., max_length=50000)
+    question: str = Field(..., min_length=1, max_length=5000)
     stats: Dict[str, Any]
-    language: str
-    parameters: str
+    language: str = Field(..., max_length=50)
+    parameters: str = Field(..., max_length=500)
     prev_drawbacks: str | None = None
+
+    @field_validator('question', 'code', 'language', 'parameters')
+    @classmethod
+    def no_special_chars(cls, v: str) -> str:
+        if isinstance(v, str) and any(char in v for char in ['\x00', '\x01']):
+            raise ValueError('Invalid characters in input')
+        return v
    
 class Drawback (BaseModel):
     drawback_text: str
@@ -27,10 +36,29 @@ class Review (BaseModel):
     existing_drawbacks: List[Drawback]
     added_question: Dict[str, str] | None = None
 
+def safe_object_id (id_string: str) -> ObjectId:
+    try:
+        return ObjectId(id_string)
+    except (InvalidId, TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid")
+
+def sanitize_string (value: str, max_length: int = 10000) -> str:
+    if not isinstance(value, str):
+        raise HTTPException(status_code=400, detail="Invalid input type")
+
+    if len(value) > max_length:
+        raise HTTPException(status_code=400, detail=f"Input too long (max {max_length})")
+    # Remove null bytes and other dangerous characters
+    sanitized = value.replace('\x00', '')
+    
+    return sanitized.strip()
+
+
 @router.post("/submit", response_model=Review)
 async def submit(request: submitRequest, current_user: dict = Depends(get_current_user)):
-    question_text = request.question.strip()
-    
+
+    question_text = sanitize_string(request.question, max_length=5000)
+
     # Fetch previous drawbacks
     prev_drawbacks_query = db.Questions.find_one(
         {"question_text": question_text}, 
@@ -196,11 +224,12 @@ async def get_user_questions(current_user: dict = Depends(get_current_user)):
 async def get_question_attempts(question_id: str, current_user: dict = Depends(get_current_user)):
 
     user_id = current_user["user"]
+    question_oid = safe_object_id(question_id) 
     attempts = list(
         db.Attempts
           .find(
               {
-                  "question_id": ObjectId(question_id),
+                  "question_id": question_oid,
                   "user_id": user_id
               }
           )
@@ -224,20 +253,22 @@ async def get_question_attempts(question_id: str, current_user: dict = Depends(g
 
 
 @router.get("/get-stored-feedback/{attempt_id}", response_model = Review)
-async def get_stored_feedback(attempt_id: str):
+async def get_stored_feedback(attempt_id: str, current_user: dict = Depends(get_current_user)):
 
-    attempt = db.Attempts.find_one({"_id": ObjectId(attempt_id)})
+    attempt_oid = safe_object_id(attempt_id)
+    attempt = db.Attempts.find_one({"_id": attempt_oid})
     
     if not attempt:
         raise HTTPException(status_code=404, detail="Attempt not found")
-
-    feedback = db.Feedbacks.find_one({"_id": ObjectId(attempt["feedback_id"])})
+    if attempt["user_id"] != current_user["user"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    feedback = db.Feedbacks.find_one({"_id": attempt["feedback_id"]})
     
     if not feedback:
         raise HTTPException(status_code=404, detail="Feedback not found")
     
     # Get the question to access all its drawbacks
-    question = db.Questions.find_one({"_id": ObjectId(attempt["question_id"])})
+    question = db.Questions.find_one({"_id": attempt["question_id"]})
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
     

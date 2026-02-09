@@ -1,4 +1,4 @@
-import { useEffect,  useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import TextEditor from '@/components/TextEditor'
 import Sidebar from '@/components/Sidebar'
@@ -257,8 +257,8 @@ export default function EditorPage() {
 				setError('Session expired. Please login again.')
 			} else if (response.status === 400) {
 				setError('Invalid Attempt')
-			
-			}	else {
+
+			} else {
 				setError('Failed to review code. Please try again.')
 			}
 		} catch (err) {
@@ -397,61 +397,61 @@ export default function EditorPage() {
 
 
 
-	// const handlefirstSubmit = async () => {
-	// 	if (!code.trim()) {
-	// 		setError('Please enter some code to review')
-	// 		return
-	// 	}
-	// 	if (!question.trim()) {
-	// 		setError('Please enter a question')
-	// 		return
-	// 	}
-	// 	if (lastSubmission.code === code.trim() &&
-	// 		lastSubmission.question === question.trim() &&
-	// 		lastSubmission.parameters === parameters) {
-	// 		console.log("Same as last submission, skipping")
-	// 		return
-	// 	}
-	// 	if (await preSubmit()) return
+// const handlefirstSubmit = async () => {
+// 	if (!code.trim()) {
+// 		setError('Please enter some code to review')
+// 		return
+// 	}
+// 	if (!question.trim()) {
+// 		setError('Please enter a question')
+// 		return
+// 	}
+// 	if (lastSubmission.code === code.trim() &&
+// 		lastSubmission.question === question.trim() &&
+// 		lastSubmission.parameters === parameters) {
+// 		console.log("Same as last submission, skipping")
+// 		return
+// 	}
+// 	if (await preSubmit()) return
 
-	// 	console.log("things that will be submitted: ", { code, language, question, stats, parameters })
+// 	console.log("things that will be submitted: ", { code, language, question, stats, parameters })
 
 
-	// 	setLoading(true)
-	// 	setError(null)
+// 	setLoading(true)
+// 	setError(null)
 
-	// 	try {
-	// 		const token = localStorage.getItem('token')
-	// 		const response = await fetch('http://localhost:8000/api/getapproaches', {
-	// 			method: 'POST',
-	// 			headers: {
-	// 				'Content-Type': 'application/json',
-	// 				'Authorization': `Bearer ${token}`
-	// 			},
-	// 			body: JSON.stringify({
-	// 				code,
-	// 				language,
-	// 				question,
-	// 				parameters,
-	// 			})
-	// 		})
+// 	try {
+// 		const token = localStorage.getItem('token')
+// 		const response = await fetch('http://localhost:8000/api/getapproaches', {
+// 			method: 'POST',
+// 			headers: {
+// 				'Content-Type': 'application/json',
+// 				'Authorization': `Bearer ${token}`
+// 			},
+// 			body: JSON.stringify({
+// 				code,
+// 				language,
+// 				question,
+// 				parameters,
+// 			})
+// 		})
 
-	// 		if (response.ok) {
-	// 			const data = await response.json()
-	// 			setReview(null)
-	// 			setApproaches(data)
+// 		if (response.ok) {
+// 			const data = await response.json()
+// 			setReview(null)
+// 			setApproaches(data)
 
-	// 		} else if (response.status === 401) {
-	// 			setError('Session expired. Please login again.')
-	// 			setTimeout(() => logout(), 2000)
-	// 		} else {
-	// 			setError('Failed to review code. Please try again.')
-	// 		}
-	// 	} catch (err) {
-	// 		setError('Network error. Please check your connection.')
-	// 		console.error('Review error:', err)
-	// 	} finally {
-	// 		setLoading(false)
-	// 	}
-	// }
+// 		} else if (response.status === 401) {
+// 			setError('Session expired. Please login again.')
+// 			setTimeout(() => logout(), 2000)
+// 		} else {
+// 			setError('Failed to review code. Please try again.')
+// 		}
+// 	} catch (err) {
+// 		setError('Network error. Please check your connection.')
+// 		console.error('Review error:', err)
+// 	} finally {
+// 		setLoading(false)
+// 	}
+// }
 

@@ -4,7 +4,9 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-SECRET=os.getenv("SECRET")
+SECRET = os.getenv("SECRET")
+if not SECRET:
+    raise ValueError("SECRET environment variable not set")
 ALGORITHM=os.getenv("ALGORITHM")
 
 def create_access_token(user_id: str) -> str:
