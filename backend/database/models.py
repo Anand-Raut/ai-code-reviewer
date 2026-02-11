@@ -1,17 +1,17 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
 from datetime import datetime
 
 class User(BaseModel):
-    name: str
+    name: str 
     email: EmailStr
     password_hash: str
     created_at: Optional[datetime] = None
 
 
 class Question(BaseModel):
-    question_text: str
-    drawbacks: List[str] = []  # Array of ObjectIds
+    question_text: str = Field(..., max_length=5000)
+    drawbacks: List[str] = []
     created_at: Optional[datetime] = None
 
 

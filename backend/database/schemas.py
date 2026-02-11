@@ -3,7 +3,7 @@ from pydantic import BaseModel, EmailStr, Field
 class SignupRequest(BaseModel):
     name: str = Field(..., min_length=2, max_length=50)
     email: EmailStr
-    password: str = Field(..., min_length=8)
+    password: str = Field(..., min_length=8, max_length=128)
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -11,12 +11,11 @@ class TokenResponse(BaseModel):
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(..., max_length=128)
 
 class changePasswordRequest(BaseModel):
-    email: EmailStr
-    prev_password: str
-    old_password: str
+    old_password: str = Field(..., max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
 
 class ChangeNameRequest(BaseModel):
-    new_name: str
+    new_name: str = Field(..., min_length=2, max_length=50)
